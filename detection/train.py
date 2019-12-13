@@ -261,7 +261,6 @@ def collate_cat_fn(batch):
 
     class_ids = torch.cat(class_ids, 0)
     boxes = torch.cat(boxes, 0)
-    # masks = torch.cat(masks, 0)
     image_ids = torch.cat(image_ids, 0)
 
     return class_ids, boxes, image_ids
