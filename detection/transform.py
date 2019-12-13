@@ -16,6 +16,17 @@ class Resize(object):
         return resize(input, size=self.size, interpolation=self.interpolation)
 
 
+class RandomResize(object):
+    def __init__(self, min_max_size, interpolation=Image.BILINEAR):
+        self.min_max_size = min_max_size
+        self.interpolation = interpolation
+
+    def __call__(self, input):
+        size = np.random.randint(self.min_max_size[0], self.min_max_size[1] + 1)
+
+        return resize(input, size=size, interpolation=self.interpolation)
+
+
 class RandomCrop(object):
     def __init__(self, size, min_size=8**2):
         self.size = size
@@ -29,23 +40,6 @@ class RandomCrop(object):
         l = np.random.randint(0, w - self.size + 1)
 
         return crop(input, (t, l), (self.size, self.size), min_size=self.min_size)
-
-
-class RandomSizedCrop(object):
-    def __init__(self, ratio, min_size=8**2):
-        self.ratio = ratio
-        self.min_size = min_size
-
-    def __call__(self, input):
-        image = input['image']
-
-        w, h = image.size
-        size = round(min(h, w) * np.random.uniform(self.ratio[0], self.ratio[1]))
-
-        t = np.random.randint(0, h - size + 1)
-        l = np.random.randint(0, w - size + 1)
-
-        return crop(input, (t, l), (size, size), min_size=self.min_size)
 
 
 class RandomFlipLeftRight(object):
