@@ -3,6 +3,7 @@ import gc
 import itertools
 import os
 import shutil
+from itertools import islice
 
 import numpy as np
 import torch
@@ -174,7 +175,9 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
 
     model.train()
     optimizer.zero_grad()
-    for i, (images, maps) in enumerate(tqdm(data_loader, desc='epoch {} train'.format(epoch))):
+    for images, maps in islice(
+            tqdm(data_loader, total=config.train_steps, desc='epoch {} train'.format(epoch)),
+            config.train_steps):
         images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
         output = model(images)
 
@@ -189,9 +192,6 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
             optimizer.zero_grad()
 
         scheduler.step()
-
-        if i >= config.train_steps:
-            break
 
     with torch.no_grad():
         metrics = {k: metrics[k].compute_and_reset() for k in metrics}

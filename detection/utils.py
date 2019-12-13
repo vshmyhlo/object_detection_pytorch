@@ -8,7 +8,7 @@ def logit(input):
 
 
 def draw_boxes(image, detections, class_names, line_width=2, shade=True):
-    font = ImageFont.truetype('./imet/Droid+Sans+Mono+Awesome.ttf', size=14)
+    font = ImageFont.truetype('./data/Droid+Sans+Mono+Awesome.ttf', size=14)
 
     class_ids, boxes, scores = detections
     scores = scores.sigmoid()  # TODO: fixme
