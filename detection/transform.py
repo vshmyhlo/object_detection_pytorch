@@ -16,7 +16,6 @@ class Resize(object):
         return resize(input, size=self.size, interpolation=self.interpolation)
 
 
-# TODO: test
 class RandomCrop(object):
     def __init__(self, size, min_size=8**2):
         self.size = size
