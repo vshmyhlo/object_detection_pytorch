@@ -25,7 +25,7 @@ from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
 from detection.model import RetinaNet
-from detection.transform import Resize, RandomResize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
+from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
 
 # TODO: visualization scores sigmoid
@@ -73,7 +73,7 @@ ANCHORS = [
 anchor_maps = build_anchors_maps((config.crop_size, config.crop_size), ANCHORS).to(DEVICE)
 
 train_transform = T.Compose([
-    RandomResize((config.resize_size, round(config.resize_size / 0.5))),
+    Resize(config.resize_size),
     RandomCrop(config.crop_size),
     RandomFlipLeftRight(),
     ApplyTo('image', T.Compose([
