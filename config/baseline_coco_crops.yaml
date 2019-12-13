@@ -1,0 +1,39 @@
+dataset: coco
+epochs: 100
+batch_size: 8
+resize_size: 512
+crop_size: 512
+train_steps: 1000
+
+anchors:
+  min_iou: 0.4
+  max_iou: 0.5
+  sizes:
+    -
+    -
+    -
+    - 32
+    - 64
+    - 128
+    - 256
+    - 512
+  ratios:
+    - 0.5
+    - 1
+    - 2
+  scales:
+    - 1
+    - 1.26
+    - 1.587
+
+opt:
+  type: sgd
+  learning_rate: 0.01
+  weight_decay: 1e-4
+  acc_steps: 2
+
+  sgd:
+    momentum: 0.9
+
+sched:
+  type: cosine
