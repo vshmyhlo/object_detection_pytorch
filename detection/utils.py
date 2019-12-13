@@ -1,7 +1,21 @@
+from itertools import islice
+
 import numpy as np
 import torch
 from PIL import ImageFont, Image, ImageDraw
 
+
+class DataLoaderSlice(object):
+    def __init__(self, data_loader, max_size):
+        self.data_loader = data_loader
+        self.max_size = max_size
+
+    def __len__(self):
+        return min(len(self.data_loader), self.max_size)
+
+    def __iter__(self):
+        return islice(self.data_loader, self.max_size)
+   
 
 def logit(input):
     return torch.log(input / (1 - input))

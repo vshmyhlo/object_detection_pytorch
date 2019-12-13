@@ -3,7 +3,6 @@ import gc
 import itertools
 import os
 import shutil
-from itertools import islice
 
 import numpy as np
 import torch
@@ -27,7 +26,7 @@ from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
-from detection.utils import logit, draw_boxes
+from detection.utils import logit, draw_boxes, DataLoaderSlice
 
 # TODO: visualization scores sigmoid
 # TODO: move logits slicing to helpers
@@ -154,13 +153,13 @@ def build_optimizer(parameters, config):
         raise AssertionError('invalid config.opt.type {}'.format(config.opt.type))
 
 
-def build_scheduler(optimizer, config, start_epoch):
+def build_scheduler(optimizer, config, epoch_size, start_epoch):
     # FIXME:
     if config.sched.type == 'cosine':
         return torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            config.epochs * config.train_steps,
-            last_epoch=start_epoch * config.train_steps - 1)
+            config.epochs * epoch_size,
+            last_epoch=start_epoch * epoch_size - 1)
     else:
         raise AssertionError('invalid config.sched.type {}'.format(config.sched.type))
 
@@ -175,9 +174,7 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
 
     model.train()
     optimizer.zero_grad()
-    data_loader = islice(
-        tqdm(data_loader, total=config.train_steps, desc='epoch {} train'.format(epoch)),
-        config.train_steps)
+    data_loader = tqdm(data_loader, total=len(data_loader), desc='epoch {} train'.format(epoch)),
     for i, (images, maps) in enumerate(data_loader, 1):
         images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
         output = model(images)
@@ -282,7 +279,9 @@ def collate_fn(batch):
 
 def train():
     train_dataset = Dataset(args.dataset_path, subset='train', transform=train_transform)
+    eval_dataset = Dataset(args.dataset_path, subset='eval', transform=eval_transform)
     class_names = train_dataset.class_names
+
     train_data_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=config.batch_size,
@@ -291,8 +290,7 @@ def train():
         num_workers=args.workers,
         collate_fn=collate_fn,
         worker_init_fn=worker_init_fn)
-
-    eval_dataset = Dataset(args.dataset_path, subset='eval', transform=eval_transform)
+    train_data_loader = DataLoaderSlice(train_data_loader, config.train_steps)
     eval_data_loader = torch.utils.data.DataLoader(
         eval_dataset,
         batch_size=config.batch_size,
@@ -313,7 +311,7 @@ def train():
     if os.path.exists(os.path.join(args.experiment_path, 'checkpoint.pth')):
         start_epoch = saver.load(os.path.join(args.experiment_path, 'checkpoint.pth'))
 
-    scheduler = build_scheduler(optimizer, config, start_epoch)
+    scheduler = build_scheduler(optimizer, config, len(train_data_loader), start_epoch)
 
     for epoch in range(start_epoch, config.epochs):
         train_epoch(
