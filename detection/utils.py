@@ -15,7 +15,7 @@ class DataLoaderSlice(object):
 
     def __iter__(self):
         return islice(self.data_loader, self.max_size)
-   
+
 
 def logit(input):
     return torch.log(input / (1 - input))
@@ -25,6 +25,11 @@ def draw_boxes(image, detections, class_names, line_width=2, shade=True):
     font = ImageFont.truetype('./data/Droid+Sans+Mono+Awesome.ttf', size=14)
 
     class_ids, boxes, scores = detections
+
+    boxes = boxes.round().long()
+    boxes[:, [0, 2]] = boxes[:, [0, 2]].clamp(0, image.size(1))
+    boxes[:, [1, 3]] = boxes[:, [1, 3]].clamp(0, image.size(2))
+
     scores = scores.sigmoid()  # TODO: fixme
 
     device = image.device
@@ -32,10 +37,7 @@ def draw_boxes(image, detections, class_names, line_width=2, shade=True):
 
     if shade:
         mask = np.zeros_like(image, dtype=np.bool)
-        boxes_clipped = boxes.clone()
-        boxes_clipped[:, [0, 2]] = boxes_clipped[:, [0, 2]].clamp(0, mask.shape[0])
-        boxes_clipped[:, [1, 3]] = boxes_clipped[:, [1, 3]].clamp(0, mask.shape[1])
-        for t, l, b, r in boxes_clipped.data.cpu().numpy().round().astype(np.int32):
+        for t, l, b, r in boxes.data.cpu().numpy():
             mask[t:b, l:r] = True
         image = np.where(mask, image, image * 0.5)
 
