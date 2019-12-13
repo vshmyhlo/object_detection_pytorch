@@ -175,9 +175,10 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
 
     model.train()
     optimizer.zero_grad()
-    for images, maps in islice(
-            tqdm(data_loader, total=config.train_steps, desc='epoch {} train'.format(epoch)),
-            config.train_steps):
+    data_loader = islice(
+        tqdm(data_loader, total=config.train_steps, desc='epoch {} train'.format(epoch)),
+        config.train_steps)
+    for i, (images, maps) in enumerate(data_loader, 1):
         images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
         output = model(images)
 
