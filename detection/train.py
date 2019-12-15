@@ -123,18 +123,45 @@ def smooth_l1_loss(input, target):
     return loss
 
 
+# def compute_classification_loss(input, target):
+#     return focal_loss(input=input, target=target)
+
+
+def compute_classification_loss(input, target):
+    mask_pos = target > 0
+    mask_neg = ~mask_pos
+
+    num_pos = mask_pos.long().sum()
+    num_neg = num_pos * 3
+
+    loss = F.binary_cross_entropy_with_logits(input, encode_class_ids(target), reduction='none')
+    loss = loss.sum(1)
+
+    loss_pos = loss[mask_pos]
+    loss_neg = loss[mask_neg].topk(num_neg).values
+
+    loss = loss_pos.sum() + loss_neg.sum()
+    loss /= (num_pos + num_neg)
+
+    return loss
+
+
+def compute_localization_loss(input, target):
+    return smooth_l1_loss(input=input, target=target)
+
+
 # TODO: check loss
 def compute_loss(input, target):
     input_class, input_regr = input
     target_class, target_regr = target
 
     # classification loss
-    class_mask = target_class != -1
-    class_loss = focal_loss(input=input_class[class_mask], target=target_class[class_mask])
+    class_mask = target_class > -1
+    class_loss = compute_classification_loss(input=input_class[class_mask], target=target_class[class_mask])
 
     # regression loss
     regr_mask = target_class > 0
-    regr_loss = smooth_l1_loss(input=input_regr[regr_mask], target=target_regr[regr_mask])
+    regr_loss = compute_localization_loss(input=input_regr[regr_mask], target=target_regr[regr_mask])
 
     assert class_loss.dim() == regr_loss.dim() == 0
     loss = class_loss + regr_loss
