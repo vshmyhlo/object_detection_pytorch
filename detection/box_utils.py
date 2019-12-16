@@ -40,3 +40,12 @@ def boxes_intersection(a, b):
     intersection = torch.prod(inner_size, -1)
 
     return intersection
+
+
+# TODO: test
+def boxes_iou(input, target):
+    intersection = boxes_intersection(input, target)
+    union = boxes_area(input) + boxes_area(target) - intersection
+    iou = intersection / union
+
+    return iou

@@ -22,11 +22,11 @@ from tqdm import tqdm
 
 from detection.anchors import build_anchors_maps, compute_anchor
 from detection.box_coding import decode_boxes, shifts_scales_to_boxes
+from detection.box_utils import boxes_iou
 from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
 from detection.losses import boxes_iou_loss, smooth_l1_loss, boxes_distance_iou_loss
-from detection.metrics import boxes_iou
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
