@@ -26,7 +26,7 @@ from detection.box_utils import boxes_iou
 from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
-from detection.losses import boxes_iou_loss, smooth_l1_loss, boxes_distance_iou_loss
+from detection.losses import boxes_iou_loss, smooth_l1_loss
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
@@ -133,8 +133,6 @@ def compute_localization_loss(input, target):
         loss = smooth_l1_loss(input=input, target=target)
     elif config.loss.localization == 'iou':
         loss = boxes_iou_loss(input=input, target=target)
-    elif config.loss.localization == 'distance_iou':
-        loss = boxes_distance_iou_loss(input=input, target=target)
     else:
         raise AssertionError('invalid config.loss.localization {}'.format(config.loss.localization))
 
