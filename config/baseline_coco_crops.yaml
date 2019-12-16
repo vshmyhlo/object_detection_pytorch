@@ -1,5 +1,5 @@
 dataset: coco
-epochs: 100
+epochs: 50
 batch_size: 8
 resize_size: 512
 crop_size: 512

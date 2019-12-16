@@ -250,9 +250,9 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
             for i, d in zip(images, dets_pred)]
 
         writer.add_image(
-            'images/true', torchvision.utils.make_grid(images_true, nrow=4, normalize=True), global_step=epoch)
+            'images_true', torchvision.utils.make_grid(images_true, nrow=4, normalize=True), global_step=epoch)
         writer.add_image(
-            'images/pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
+            'images_pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
 
 
 def eval_epoch(model, data_loader, class_names, epoch):
@@ -296,9 +296,9 @@ def eval_epoch(model, data_loader, class_names, epoch):
             for i, d in zip(images, dets_pred)]
 
         writer.add_image(
-            'images/true', torchvision.utils.make_grid(images_true, nrow=4, normalize=True), global_step=epoch)
+            'images_true', torchvision.utils.make_grid(images_true, nrow=4, normalize=True), global_step=epoch)
         writer.add_image(
-            'images/pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
+            'images_pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
 
 
 def collate_cat_fn(batch):

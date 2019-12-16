@@ -28,7 +28,6 @@ def boxes_distance_iou_loss(input, target):
 
     outer = boxes_outer(input, target)
     outer = boxes_area(outer)
-
     ioo = intersection / outer
 
     loss = 1 - (iou + ioo) / 2
