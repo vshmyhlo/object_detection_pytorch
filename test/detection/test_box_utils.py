@@ -1,7 +1,6 @@
-import pytest
 import torch
 
-from detection.box_utils import boxes_area, boxes_iou, boxes_yxhw_to_tlbr, boxes_tlbr_to_yxhw, boxes_center, boxes_size
+from detection.box_utils import boxes_area, boxes_iou, boxes_center, boxes_hw
 
 
 def test_boxes_center():
@@ -29,7 +28,7 @@ def test_boxes_size():
         [0, 0, 5, 10],
     ], dtype=torch.float)
 
-    actual = boxes_size(boxes)
+    actual = boxes_hw(boxes)
 
     expected = torch.tensor([
         [0.1, 0.2],
@@ -73,29 +72,3 @@ def test_boxes_area():
     ], dtype=torch.float)
 
     assert torch.allclose(actual, expected)
-
-
-@pytest.mark.skip
-def test_boxes_yxhw_to_tlbr():
-    boxes = torch.tensor([
-        [30, 30, 20, 40],
-    ], dtype=torch.float)
-
-    boxes = boxes_yxhw_to_tlbr(boxes)
-
-    assert torch.equal(boxes, torch.tensor([
-        [20, 10, 40, 50]
-    ], dtype=torch.float))
-
-
-@pytest.mark.skip
-def test_boxes_tlbr_to_yxhw():
-    boxes = torch.tensor([
-        [20, 10, 40, 50]
-    ], dtype=torch.float)
-
-    boxes = boxes_tlbr_to_yxhw(boxes)
-
-    assert torch.equal(boxes, torch.tensor([
-        [30, 30, 20, 40],
-    ], dtype=torch.float))

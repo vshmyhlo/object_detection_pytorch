@@ -130,7 +130,7 @@ class RetinaNet(nn.Module):
         self.backbone = Backbone()
         self.fpn = FPN(anchor_levels)
         self.class_head = HeadSubnet(256, num_anchors * num_classes)
-        self.regr_head = HeadSubnet(256, num_anchors * 4)
+        self.loc_head = HeadSubnet(256, num_anchors * 4)
         self.flatten = FlattenDetectionMap(num_anchors)
 
         for m in self.backbone.modules():
@@ -141,7 +141,7 @@ class RetinaNet(nn.Module):
         modules = itertools.chain(
             self.fpn.modules(),
             self.class_head.modules(),
-            self.regr_head.modules())
+            self.loc_head.modules())
         for m in modules:
             if isinstance(m, nn.Conv2d):
                 nn.init.normal_(m.weight, mean=0., std=0.01)
@@ -158,9 +158,9 @@ class RetinaNet(nn.Module):
         fpn_output = self.fpn(backbone_output)
 
         class_output = torch.cat([self.flatten(self.class_head(x)) for x in fpn_output if x is not None], 1)
-        regr_output = torch.cat([self.flatten(self.regr_head(x)) for x in fpn_output if x is not None], 1)
+        loc_output = torch.cat([self.flatten(self.loc_head(x)) for x in fpn_output if x is not None], 1)
 
-        return class_output, regr_output
+        return class_output, loc_output
 
     def train(self, mode=True):
         super().train(mode)

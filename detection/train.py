@@ -7,7 +7,7 @@ import shutil
 import numpy as np
 import torch
 import torch.distributions
-import torch.nn.functional as F
+import torch.nn as nn
 import torch.utils
 import torch.utils.data
 import torchvision
@@ -17,13 +17,15 @@ from all_the_tools.torch.utils import Saver, one_hot, seed_torch
 from all_the_tools.transforms import ApplyTo
 from all_the_tools.utils import seed_python
 from tensorboardX import SummaryWriter
+from torch.nn import functional as F
 from tqdm import tqdm
 
 from detection.anchors import build_anchors_maps, compute_anchor
-from detection.box_coding import decode_boxes
+from detection.box_coding import decode_boxes, shifts_scales_to_boxes
 from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
+from detection.losses import boxes_iou_loss, smooth_l1_loss
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
@@ -31,6 +33,7 @@ from detection.utils import logit, draw_boxes, DataLoaderSlice
 # TODO: visualization scores sigmoid
 # TODO: move logits slicing to helpers
 # TODO: freeze BN
+# TODO: generate boxes from masks
 
 
 MEAN = [0.485, 0.456, 0.406]
@@ -114,32 +117,55 @@ def focal_loss(input, target, gamma=2., alpha=0.25):
     return loss
 
 
-def smooth_l1_loss(input, target):
-    assert input.numel() == target.numel()
-    assert input.numel() > 0
+def compute_classification_loss(input, target):
+    if config.loss.classification == 'focal':
+        loss = focal_loss(input=input, target=target)
+    else:
+        raise AssertionError('invalid config.loss.classification {}'.format(config.loss.classification))
 
-    loss = F.smooth_l1_loss(input=input, target=target, reduction='mean')
+    return loss.mean()
 
-    return loss
+
+def compute_localization_loss(input, target):
+    if config.loss.localization == 'smooth_l1':
+        loss = smooth_l1_loss(input=input, target=target)
+    elif config.loss.localization == 'iou':
+        loss = boxes_iou_loss(input=input, target=target)
+    else:
+        raise AssertionError('invalid config.loss.localization {}'.format(config.loss.localization))
+
+    return loss.mean()
 
 
 # TODO: check loss
 def compute_loss(input, target):
-    input_class, input_regr = input
-    target_class, target_regr = target
+    input_class, input_loc = input
+    target_class, target_loc = target
 
     # classification loss
     class_mask = target_class != -1
-    class_loss = focal_loss(input=input_class[class_mask], target=target_class[class_mask])
+    class_loss = compute_classification_loss(input=input_class[class_mask], target=target_class[class_mask])
 
-    # regression loss
-    regr_mask = target_class > 0
-    regr_loss = smooth_l1_loss(input=input_regr[regr_mask], target=target_regr[regr_mask])
+    # localization loss
+    loc_mask = target_class > 0
+    loc_loss = compute_localization_loss(input=input_loc[loc_mask], target=target_loc[loc_mask])
 
-    assert class_loss.dim() == regr_loss.dim() == 0
-    loss = class_loss + regr_loss
+    assert class_loss.dim() == loc_loss.dim() == 0
+    loss = class_loss + loc_loss
 
     return loss
+
+
+def compute_metric(input, target):
+    input_class, input_loc = input
+    target_class, target_loc = target
+
+    loc_mask = target_class > 0
+    iou = 1 - boxes_iou_loss(input=input_loc[loc_mask], target=target_loc[loc_mask])
+
+    return {
+        'iou': iou,
+    }
 
 
 def build_optimizer(parameters, config):
@@ -165,6 +191,13 @@ def build_scheduler(optimizer, config, epoch_size, start_epoch):
         raise AssertionError('invalid config.sched.type {}'.format(config.sched.type))
 
 
+def decode(output, anchors):
+    output_class, output_loc = output
+    output_loc = shifts_scales_to_boxes(output_loc, anchors.unsqueeze(0))
+
+    return output_class, output_loc
+
+
 def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
     writer = SummaryWriter(os.path.join(args.experiment_path, 'train'))
 
@@ -178,6 +211,7 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
     for i, (images, maps) in enumerate(tqdm(data_loader, desc='epoch {} train'.format(epoch)), 1):
         images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
         output = model(images)
+        output = decode(output, anchor_maps)
 
         loss = compute_loss(input=output, target=maps)
         metrics['loss'].update(loss.data.cpu().numpy())
@@ -186,6 +220,7 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
         (loss.mean() / config.opt.acc_steps).backward()
 
         if i % config.opt.acc_steps == 0:
+            nn.utils.clip_grad_norm_(model.parameters(), 100.)
             optimizer.step()
             optimizer.zero_grad()
 
@@ -198,13 +233,13 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
             writer.add_scalar(k, metrics[k], global_step=epoch)
 
         dets_true = [
-            decode_boxes((logit(encode_class_ids(c)), r), anchor_maps)
+            decode_boxes((logit(encode_class_ids(c)), r))
             for c, r in zip(*maps)]
         images_true = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
             for i, d in zip(images, dets_true)]
         dets_pred = [
-            decode_boxes((c, r), anchor_maps)
+            decode_boxes((c, r))
             for c, r in zip(*output)]
         images_pred = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
@@ -221,6 +256,7 @@ def eval_epoch(model, data_loader, class_names, epoch):
 
     metrics = {
         'loss': Mean(),
+        'iou': Mean(),
     }
 
     model.eval()
@@ -228,9 +264,14 @@ def eval_epoch(model, data_loader, class_names, epoch):
         for images, maps in tqdm(data_loader, desc='epoch {} evaluation'.format(epoch)):
             images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
             output = model(images)
+            output = decode(output, anchor_maps)
 
             loss = compute_loss(input=output, target=maps)
             metrics['loss'].update(loss.data.cpu().numpy())
+
+            metric = compute_metric(input=output, target=maps)
+            for k in metric:
+                metrics[k].update(metric[k].data.cpu().numpy())
 
         metrics = {k: metrics[k].compute_and_reset() for k in metrics}
         print('[EPOCH {}][EVAL] {}'.format(epoch, ', '.join('{}: {:.8f}'.format(k, metrics[k]) for k in metrics)))

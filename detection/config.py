@@ -36,6 +36,10 @@ def build_default_config():
         1.587,
     ]
 
+    config.loss = CN()
+    config.loss.classification = 'focal'
+    config.loss.localization = 'smooth_l1'
+   
     config.opt = CN()
     config.opt.type = 'sgd'
     config.opt.learning_rate = 0.01
