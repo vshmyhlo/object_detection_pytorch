@@ -1,7 +1,6 @@
-import torch
 from torch.nn import functional as F
 
-from detection.box_utils import boxes_center, boxes_tl_br, boxes_area, boxes_intersection
+from detection.box_utils import boxes_area, boxes_intersection, boxes_outer
 
 
 def smooth_l1_loss(input, target):
@@ -23,22 +22,15 @@ def boxes_iou_loss(input, target):
 
 
 def boxes_distance_iou_loss(input, target):
-    input_tl, input_br = boxes_tl_br(input)
-    target_tl, target_br = boxes_tl_br(target)
-
     intersection = boxes_intersection(input, target)
     union = boxes_area(input) + boxes_area(target) - intersection
     iou = intersection / union
 
-    inner_dist = torch.norm(boxes_center(input) - boxes_center(target), 2, -1)**2
+    outer = boxes_outer(input, target)
+    outer = boxes_area(outer)
 
-    outer_tl = torch.min(input_tl, target_tl)
-    outer_br = torch.max(input_br, target_br)
-    outer_size = torch.clamp(outer_br - outer_tl, min=0)
-    outer_dist = torch.norm(outer_size, 2, -1)**2
+    ioo = intersection / outer
 
-    dist = inner_dist / outer_dist
-
-    loss = 1 - iou + dist
+    loss = 1 - (iou + ioo) / 2
 
     return loss

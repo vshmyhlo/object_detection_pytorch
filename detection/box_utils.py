@@ -43,9 +43,21 @@ def boxes_intersection(a, b):
 
 
 # TODO: test
-def boxes_iou(input, target):
-    intersection = boxes_intersection(input, target)
-    union = boxes_area(input) + boxes_area(target) - intersection
+def boxes_iou(a, b):
+    intersection = boxes_intersection(a, b)
+    union = boxes_area(a) + boxes_area(b) - intersection
     iou = intersection / union
 
     return iou
+
+
+# TODO: test
+def boxes_outer(a, b):
+    a_tl, a_br = boxes_tl_br(a)
+    b_tl, b_br = boxes_tl_br(b)
+
+    outer_tl = torch.min(a_tl, b_tl)
+    outer_br = torch.max(a_br, b_br)
+    outer = torch.cat([outer_tl, outer_br], -1)
+
+    return outer
