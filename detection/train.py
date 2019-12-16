@@ -279,13 +279,13 @@ def eval_epoch(model, data_loader, class_names, epoch):
             writer.add_scalar(k, metrics[k], global_step=epoch)
 
         dets_true = [
-            decode_boxes((logit(encode_class_ids(c)), r), anchor_maps)
+            decode_boxes((logit(encode_class_ids(c)), r))
             for c, r in zip(*maps)]
         images_true = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
             for i, d in zip(images, dets_true)]
         dets_pred = [
-            decode_boxes((c, r), anchor_maps)
+            decode_boxes((c, r))
             for c, r in zip(*output)]
         images_pred = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
