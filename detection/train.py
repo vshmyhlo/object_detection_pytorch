@@ -165,7 +165,7 @@ def compute_metric(input, target):
     target_class, target_loc = target
 
     loc_mask = target_class > 0
-    iou = boxes_iou(input=input_loc[loc_mask], target=target_loc[loc_mask])
+    iou = boxes_iou(input_loc[loc_mask], target_loc[loc_mask])
 
     return {
         'iou': iou,
