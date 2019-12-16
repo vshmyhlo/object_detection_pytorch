@@ -1,7 +1,7 @@
 import torch
 import torchvision
 
-from detection.box_utils import boxes_iou, boxes_center, boxes_hw
+from detection.box_utils import boxes_pairwise_iou, boxes_center, boxes_hw
 
 
 def boxes_to_shifts_scales(boxes, anchors):
@@ -30,7 +30,7 @@ def encode_boxes(input, anchors, min_iou, max_iou):
 
         return class_output, loc_output
 
-    ious = boxes_iou(boxes, anchors)
+    ious = boxes_pairwise_iou(boxes, anchors)
     iou_values, iou_indices = ious.max(0)
 
     # build class_output

@@ -1,6 +1,6 @@
 import torch
 
-from detection.box_utils import boxes_area, boxes_iou, boxes_center, boxes_hw
+from detection.box_utils import boxes_area, boxes_pairwise_iou, boxes_center, boxes_hw
 
 
 def test_boxes_center():
@@ -48,7 +48,7 @@ def test_boxes_iou():
         [10, 20, 20, 40],
     ], dtype=torch.float)
 
-    actual = boxes_iou(a, b)
+    actual = boxes_pairwise_iou(a, b)
     expected = torch.tensor([
         [1 / 3],
         [0.],

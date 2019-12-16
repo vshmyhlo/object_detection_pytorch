@@ -25,7 +25,8 @@ from detection.box_coding import decode_boxes, shifts_scales_to_boxes
 from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
-from detection.losses import boxes_iou_loss, smooth_l1_loss
+from detection.losses import boxes_iou_loss, smooth_l1_loss, boxes_distance_iou_loss
+from detection.metrics import boxes_iou
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
@@ -34,6 +35,7 @@ from detection.utils import logit, draw_boxes, DataLoaderSlice
 # TODO: move logits slicing to helpers
 # TODO: freeze BN
 # TODO: generate boxes from masks
+# TODO: move scores decoding to loss
 
 
 MEAN = [0.485, 0.456, 0.406]
@@ -131,6 +133,8 @@ def compute_localization_loss(input, target):
         loss = smooth_l1_loss(input=input, target=target)
     elif config.loss.localization == 'iou':
         loss = boxes_iou_loss(input=input, target=target)
+    elif config.loss.localization == 'distance_iou':
+        loss = boxes_distance_iou_loss(input=input, target=target)
     else:
         raise AssertionError('invalid config.loss.localization {}'.format(config.loss.localization))
 
@@ -150,7 +154,7 @@ def compute_loss(input, target):
     loc_mask = target_class > 0
     loc_loss = compute_localization_loss(input=input_loc[loc_mask], target=target_loc[loc_mask])
 
-    assert class_loss.dim() == loc_loss.dim() == 0
+    assert class_loss.size() == loc_loss.size()
     loss = class_loss + loc_loss
 
     return loss
@@ -161,7 +165,7 @@ def compute_metric(input, target):
     target_class, target_loc = target
 
     loc_mask = target_class > 0
-    iou = 1 - boxes_iou_loss(input=input_loc[loc_mask], target=target_loc[loc_mask])
+    iou = boxes_iou(input=input_loc[loc_mask], target=target_loc[loc_mask])
 
     return {
         'iou': iou,
@@ -246,9 +250,9 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
             for i, d in zip(images, dets_pred)]
 
         writer.add_image(
-            'images_true', torchvision.utils.make_grid(images_true, nrow=4, normalize=True), global_step=epoch)
+            'images/true', torchvision.utils.make_grid(images_true, nrow=4, normalize=True), global_step=epoch)
         writer.add_image(
-            'images_pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
+            'images/pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
 
 
 def eval_epoch(model, data_loader, class_names, epoch):
@@ -292,9 +296,9 @@ def eval_epoch(model, data_loader, class_names, epoch):
             for i, d in zip(images, dets_pred)]
 
         writer.add_image(
-            'images_true', torchvision.utils.make_grid(images_true, nrow=4, normalize=True), global_step=epoch)
+            'images/true', torchvision.utils.make_grid(images_true, nrow=4, normalize=True), global_step=epoch)
         writer.add_image(
-            'images_pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
+            'images/pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
 
 
 def collate_cat_fn(batch):
