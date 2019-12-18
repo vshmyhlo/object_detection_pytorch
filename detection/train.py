@@ -39,7 +39,6 @@ from detection.utils import logit, draw_boxes, DataLoaderSlice
 # TODO: rename all usages of "maps"
 # TODO: show preds before nms
 # TODO: show pred heatmaps
-# TODO: fix scheduler start/end
 
 
 MEAN = [0.485, 0.456, 0.406]

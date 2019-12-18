@@ -115,11 +115,17 @@ class FlattenDetectionMap(nn.Module):
         self.num_anchors = num_anchors
 
     def forward(self, input):
-        b, c, h, w = input.size()
-        input = input.view(b, c // self.num_anchors, self.num_anchors * h * w)
-        input = input.permute(0, 2, 1)
+        input = flatten_detection_map(input, self.num_anchors)
 
         return input
+
+
+def flatten_detection_map(input, num_anchors):
+    *rest, c, h, w = input.size()
+    input = input.view(*rest, c // num_anchors, num_anchors * h * w)
+    input = input.transpose(-1, -2)
+
+    return input
 
 
 class RetinaNet(nn.Module):
