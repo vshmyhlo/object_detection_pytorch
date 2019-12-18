@@ -30,6 +30,8 @@ from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
 
+# TODO: pin memory
+# TODO: smaller model/larger image
 # TODO: visualization scores sigmoid
 # TODO: move logits slicing to helpers
 # TODO: freeze BN

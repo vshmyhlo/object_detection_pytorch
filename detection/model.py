@@ -117,9 +117,7 @@ class FlattenDetectionMap(nn.Module):
         self.num_anchors = num_anchors
 
     def forward(self, input):
-        input = flatten_detection_map(input, self.num_anchors)
-
-        return input
+        return flatten_detection_map(input, self.num_anchors)
 
 
 class RetinaNet(nn.Module):
