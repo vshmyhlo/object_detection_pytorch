@@ -12,11 +12,12 @@ def test_conversion():
 
     assert torch.allclose(
         boxes,
-        shifts_scales_to_boxes(boxes_to_shifts_scales(boxes, anchors), anchors))
+        shifts_scales_to_boxes(boxes_to_shifts_scales(boxes, anchors), anchors),
+        atol=1e-6)
 
     shifts_scales = torch.empty(10, 4).normal_()
 
     assert torch.allclose(
         shifts_scales,
         boxes_to_shifts_scales(shifts_scales_to_boxes(shifts_scales, anchors), anchors),
-        atol=1e-7)
+        atol=1e-6)

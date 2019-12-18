@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from detection.anchors import build_anchors_maps
+from detection.anchors import arrange_anchors_on_grid
 from detection.box_coding import encode_boxes
 from detection.box_utils import boxes_area
 
@@ -60,7 +60,7 @@ class BuildLabels(object):
         image, dets = input['image'], (input['class_ids'], input['boxes'])
 
         _, h, w = image.size()
-        anchor_maps = build_anchors_maps((h, w), self.anchors)
+        anchor_maps = arrange_anchors_on_grid((h, w), self.anchors)
         maps = encode_boxes(dets, anchor_maps, min_iou=self.min_iou, max_iou=self.max_iou)
 
         return image, maps

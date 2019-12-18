@@ -7,7 +7,6 @@ import shutil
 import numpy as np
 import torch
 import torch.distributions
-import torch.nn as nn
 import torch.utils
 import torch.utils.data
 import torchvision
@@ -20,8 +19,8 @@ from tensorboardX import SummaryWriter
 from torch.nn import functional as F
 from tqdm import tqdm
 
-from detection.anchors import build_anchors_maps, compute_anchor
-from detection.box_coding import decode_boxes, shifts_scales_to_boxes
+from detection.anchors import arrange_anchors_on_grid, compute_anchor
+from detection.box_coding import decode_boxes, shifts_scales_to_boxes, boxes_to_shifts_scales
 from detection.box_utils import boxes_iou
 from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
@@ -36,6 +35,7 @@ from detection.utils import logit, draw_boxes, DataLoaderSlice
 # TODO: freeze BN
 # TODO: generate boxes from masks
 # TODO: move scores decoding to loss
+# TODO: use named tensors
 
 
 MEAN = [0.485, 0.456, 0.406]
@@ -75,7 +75,7 @@ ANCHORS = [
     if size is not None else None
     for size in config.anchors.sizes
 ]
-anchor_maps = build_anchors_maps((config.crop_size, config.crop_size), ANCHORS).to(DEVICE)
+anchors = arrange_anchors_on_grid((config.crop_size, config.crop_size), ANCHORS).to(DEVICE)
 
 train_transform = T.Compose([
     Resize(config.resize_size),
@@ -128,10 +128,12 @@ def compute_classification_loss(input, target):
     return loss.mean()
 
 
-def compute_localization_loss(input, target):
+def compute_localization_loss(input, target, anchors):
     if config.loss.localization == 'smooth_l1':
+        target = boxes_to_shifts_scales(target, anchors)
         loss = smooth_l1_loss(input=input, target=target)
     elif config.loss.localization == 'iou':
+        input = shifts_scales_to_boxes(input, anchors)
         loss = boxes_iou_loss(input=input, target=target)
     else:
         raise AssertionError('invalid config.loss.localization {}'.format(config.loss.localization))
@@ -140,17 +142,22 @@ def compute_localization_loss(input, target):
 
 
 # TODO: check loss
-def compute_loss(input, target):
+# TODO: incostistent interface in compute_loss and compute_metric
+# TODO: target_class, target_loc, target_boxes = target ?
+def compute_loss(input, target, anchors):
     input_class, input_loc = input
     target_class, target_loc = target
+    anchors = anchors.repeat(input_class.size(0), 1, 1)
 
     # classification loss
     class_mask = target_class != -1
-    class_loss = compute_classification_loss(input=input_class[class_mask], target=target_class[class_mask])
+    class_loss = compute_classification_loss(
+        input=input_class[class_mask], target=target_class[class_mask])
 
     # localization loss
     loc_mask = target_class > 0
-    loc_loss = compute_localization_loss(input=input_loc[loc_mask], target=target_loc[loc_mask])
+    loc_loss = compute_localization_loss(
+        input=input_loc[loc_mask], target=target_loc[loc_mask], anchors=anchors[loc_mask])
 
     assert class_loss.size() == loc_loss.size()
     loss = class_loss + loc_loss
@@ -195,7 +202,7 @@ def build_scheduler(optimizer, config, epoch_size, start_epoch):
 
 def decode(output, anchors):
     output_class, output_loc = output
-    output_loc = shifts_scales_to_boxes(output_loc, anchors.unsqueeze(0))
+    output_loc = shifts_scales_to_boxes(output_loc, anchors)
 
     return output_class, output_loc
 
@@ -213,16 +220,16 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
     for i, (images, maps) in enumerate(tqdm(data_loader, desc='epoch {} train'.format(epoch)), 1):
         images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
         output = model(images)
-        output = decode(output, anchor_maps)
 
-        loss = compute_loss(input=output, target=maps)
+        loss = compute_loss(input=output, target=maps, anchors=anchors.unsqueeze(0))
         metrics['loss'].update(loss.data.cpu().numpy())
         metrics['learning_rate'].update(np.squeeze(scheduler.get_lr()))
+
+        output = decode(output, anchors.unsqueeze(0))
 
         (loss.mean() / config.opt.acc_steps).backward()
 
         if i % config.opt.acc_steps == 0:
-            nn.utils.clip_grad_norm_(model.parameters(), 100.)
             optimizer.step()
             optimizer.zero_grad()
 
@@ -266,10 +273,11 @@ def eval_epoch(model, data_loader, class_names, epoch):
         for images, maps in tqdm(data_loader, desc='epoch {} evaluation'.format(epoch)):
             images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
             output = model(images)
-            output = decode(output, anchor_maps)
 
-            loss = compute_loss(input=output, target=maps)
+            loss = compute_loss(input=output, target=maps, anchors=anchors.unsqueeze(0))
             metrics['loss'].update(loss.data.cpu().numpy())
+
+            output = decode(output, anchors.unsqueeze(0))
 
             metric = compute_metric(input=output, target=maps)
             for k in metric:
