@@ -4,7 +4,11 @@ from detection.anchors import arrange_anchor_on_grid
 
 
 def test_arange_anchor_on_grid():
-    actual = arrange_anchor_on_grid((60, 60), (2, 2), (40, 40))
+    actual = arrange_anchor_on_grid(
+        torch.tensor((60, 60)),
+        torch.tensor((2, 2)),
+        torch.tensor((40, 40)))
+
     expected = torch.tensor([
         [-5, -5, 35, 35],
         [-5, 25, 35, 65],

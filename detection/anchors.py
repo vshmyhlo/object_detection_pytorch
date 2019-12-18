@@ -3,12 +3,12 @@ import math
 import torch
 
 
+# TODO: remove explicit torch.tensor(...) calls
 # TODO: test
 # TODO: check that network predicts same order of boxes
 # TODO: rename all anchors maps to anchors
 def arrange_anchors_on_grid(image_size, anchor_levels):
-    image_size = torch.tensor(image_size)
-    map_size = torch.tensor(image_size)
+    map_size = image_size
 
     anchor_maps = []
     for anchors in anchor_levels:
@@ -26,10 +26,6 @@ def arrange_anchors_on_grid(image_size, anchor_levels):
 
 # TODO: use helpers
 def arrange_anchor_on_grid(image_size, map_size, anchor):
-    image_size = torch.tensor(image_size)
-    map_size = torch.tensor(map_size)
-    anchor = torch.tensor(anchor)
-
     cell_size = image_size / map_size
 
     y = torch.linspace(cell_size[0] / 2, image_size[0] - cell_size[0] / 2, map_size[0])
@@ -52,4 +48,4 @@ def compute_anchor(size, ratio, scale):
     h = math.sqrt(size**2 / ratio) * scale
     w = h * ratio
 
-    return h, w
+    return torch.tensor((h, w))

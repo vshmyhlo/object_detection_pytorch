@@ -60,7 +60,7 @@ class BuildLabels(object):
         image, dets = input['image'], (input['class_ids'], input['boxes'])
 
         _, h, w = image.size()
-        anchors = arrange_anchors_on_grid((h, w), self.anchors)
+        anchors = arrange_anchors_on_grid(torch.tensor((h, w)), self.anchors)
         maps = encode_boxes(dets, anchors, min_iou=self.min_iou, max_iou=self.max_iou)
 
         return image, maps, anchors
