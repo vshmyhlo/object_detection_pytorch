@@ -21,6 +21,7 @@ def shifts_scales_to_boxes(shifts_scales, anchors):
     return boxes
 
 
+# TODO: rename encode/decode with anchors
 def encode_boxes(input, anchors, min_iou, max_iou):
     class_ids, boxes = input
 

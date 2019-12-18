@@ -36,6 +36,7 @@ from detection.utils import logit, draw_boxes, DataLoaderSlice
 # TODO: generate boxes from masks
 # TODO: move scores decoding to loss
 # TODO: use named tensors
+# TODO: rename all usages of "maps"
 
 
 MEAN = [0.485, 0.456, 0.406]
