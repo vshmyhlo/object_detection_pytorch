@@ -44,13 +44,6 @@ from detection.utils import logit, draw_boxes, DataLoaderSlice
 
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
-
-
-# TODO: check all usages
-def encode_class_ids(input):
-    return one_hot(input + 1, Dataset.num_classes + 2)[:, 2:]
-
-
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 parser = argparse.ArgumentParser()
@@ -99,6 +92,11 @@ eval_transform = T.Compose([
     ])),
     BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
 ])
+
+
+# TODO: check all usages
+def encode_class_ids(input):
+    return one_hot(input + 1, Dataset.num_classes + 2)[:, 2:]
 
 
 def worker_init_fn(_):
