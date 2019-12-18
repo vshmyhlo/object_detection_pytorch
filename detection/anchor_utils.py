@@ -2,8 +2,6 @@ import math
 
 import torch
 
-from detection.model import flatten_detection_map
-
 
 # TODO: remove explicit torch.tensor(...) calls
 # TODO: test
@@ -19,7 +17,7 @@ def arrange_anchors_on_grid(image_size, anchor_levels):
             for anchor in anchors:
                 anchor_map = arrange_anchor_on_grid(image_size, map_size, anchor)
                 level_anchor_maps.append(anchor_map)
-               
+
             level_anchor_maps = torch.cat(level_anchor_maps, 0)
             level_anchor_maps = flatten_detection_map(level_anchor_maps, len(anchors))
             anchor_maps.append(level_anchor_maps)
@@ -38,14 +36,14 @@ def arrange_anchor_on_grid(image_size, map_size, anchor):
     y = torch.linspace(cell_size[0] / 2, image_size[0] - cell_size[0] / 2, map_size[0])
     x = torch.linspace(cell_size[1] / 2, image_size[1] - cell_size[1] / 2, map_size[1])
     y, x = torch.meshgrid(y, x)
-    yx = torch.stack([y, x], 0)
+    yx = torch.stack((y, x), 0)
     del y, x
 
     anchor = anchor.view(2, 1, 1)
     tl = yx - anchor / 2
     br = yx + anchor / 2
 
-    anchor_map = torch.cat([tl, br], 0)
+    anchor_map = torch.cat((tl, br), 0)
 
     return anchor_map
 
@@ -55,3 +53,12 @@ def compute_anchor(size, ratio, scale):
     w = h * ratio
 
     return torch.tensor((h, w))
+
+
+# TODO: test
+def flatten_detection_map(input, num_anchors):
+    *rest, c, h, w = input.size()
+    input = input.view(*rest, c // num_anchors, num_anchors * h * w)
+    input = input.transpose(-1, -2)
+
+    return input

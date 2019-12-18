@@ -1,6 +1,6 @@
 import torch
 
-from detection.anchors import arrange_anchor_on_grid
+from detection.anchor_utils import arrange_anchor_on_grid
 
 
 def test_arange_anchor_on_grid():

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from detection.anchors import arrange_anchors_on_grid
+from detection.anchor_utils import arrange_anchors_on_grid
 from detection.box_coding import encode_boxes
 from detection.box_utils import boxes_area
 

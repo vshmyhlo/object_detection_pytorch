@@ -19,7 +19,7 @@ from tensorboardX import SummaryWriter
 from torch.nn import functional as F
 from tqdm import tqdm
 
-from detection.anchors import compute_anchor
+from detection.anchor_utils import compute_anchor
 from detection.box_coding import decode_boxes, shifts_scales_to_boxes, boxes_to_shifts_scales
 from detection.box_utils import boxes_iou
 from detection.config import build_default_config

@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
+from detection.anchor_utils import flatten_detection_map
+
 
 class ReLU(nn.ReLU):
     pass
@@ -118,14 +120,6 @@ class FlattenDetectionMap(nn.Module):
         input = flatten_detection_map(input, self.num_anchors)
 
         return input
-
-
-def flatten_detection_map(input, num_anchors):
-    *rest, c, h, w = input.size()
-    input = input.view(*rest, c // num_anchors, num_anchors * h * w)
-    input = input.transpose(-1, -2)
-
-    return input
 
 
 class RetinaNet(nn.Module):
