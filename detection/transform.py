@@ -60,10 +60,10 @@ class BuildLabels(object):
         image, dets = input['image'], (input['class_ids'], input['boxes'])
 
         _, h, w = image.size()
-        anchor_maps = arrange_anchors_on_grid((h, w), self.anchors)
-        maps = encode_boxes(dets, anchor_maps, min_iou=self.min_iou, max_iou=self.max_iou)
+        anchors = arrange_anchors_on_grid((h, w), self.anchors)
+        maps = encode_boxes(dets, anchors, min_iou=self.min_iou, max_iou=self.max_iou)
 
-        return image, maps
+        return image, maps, anchors
 
 
 def resize(input, size, interpolation=Image.BILINEAR):

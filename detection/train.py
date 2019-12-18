@@ -19,7 +19,7 @@ from tensorboardX import SummaryWriter
 from torch.nn import functional as F
 from tqdm import tqdm
 
-from detection.anchors import arrange_anchors_on_grid, compute_anchor
+from detection.anchors import compute_anchor
 from detection.box_coding import decode_boxes, shifts_scales_to_boxes, boxes_to_shifts_scales
 from detection.box_utils import boxes_iou
 from detection.config import build_default_config
@@ -75,7 +75,6 @@ ANCHORS = [
     if size is not None else None
     for size in config.anchors.sizes
 ]
-anchors = arrange_anchors_on_grid((config.crop_size, config.crop_size), ANCHORS).to(DEVICE)
 
 train_transform = T.Compose([
     Resize(config.resize_size),
@@ -147,7 +146,6 @@ def compute_localization_loss(input, target, anchors):
 def compute_loss(input, target, anchors):
     input_class, input_loc = input
     target_class, target_loc = target
-    anchors = anchors.repeat(input_class.size(0), 1, 1)
 
     # classification loss
     class_mask = target_class != -1
@@ -217,15 +215,15 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
 
     model.train()
     optimizer.zero_grad()
-    for i, (images, maps) in enumerate(tqdm(data_loader, desc='epoch {} train'.format(epoch)), 1):
-        images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
+    for i, (images, labels, anchors) in enumerate(tqdm(data_loader, desc='epoch {} train'.format(epoch)), 1):
+        images, labels, anchors = images.to(DEVICE), [m.to(DEVICE) for m in labels], anchors.to(DEVICE)
         output = model(images)
 
-        loss = compute_loss(input=output, target=maps, anchors=anchors.unsqueeze(0))
+        loss = compute_loss(input=output, target=labels, anchors=anchors)
         metrics['loss'].update(loss.data.cpu().numpy())
         metrics['learning_rate'].update(np.squeeze(scheduler.get_lr()))
 
-        output = decode(output, anchors.unsqueeze(0))
+        output = decode(output, anchors)
 
         (loss.mean() / config.opt.acc_steps).backward()
 
@@ -243,7 +241,7 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
 
         dets_true = [
             decode_boxes((logit(encode_class_ids(c)), r))
-            for c, r in zip(*maps)]
+            for c, r in zip(*labels)]
         images_true = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
             for i, d in zip(images, dets_true)]
@@ -270,16 +268,16 @@ def eval_epoch(model, data_loader, class_names, epoch):
 
     model.eval()
     with torch.no_grad():
-        for images, maps in tqdm(data_loader, desc='epoch {} evaluation'.format(epoch)):
-            images, maps = images.to(DEVICE), [m.to(DEVICE) for m in maps]
+        for images, labels, anchors in tqdm(data_loader, desc='epoch {} evaluation'.format(epoch)):
+            images, labels, anchors = images.to(DEVICE), [m.to(DEVICE) for m in labels], anchors.to(DEVICE)
             output = model(images)
 
-            loss = compute_loss(input=output, target=maps, anchors=anchors.unsqueeze(0))
+            loss = compute_loss(input=output, target=labels, anchors=anchors)
             metrics['loss'].update(loss.data.cpu().numpy())
 
-            output = decode(output, anchors.unsqueeze(0))
+            output = decode(output, anchors)
 
-            metric = compute_metric(input=output, target=maps)
+            metric = compute_metric(input=output, target=labels)
             for k in metric:
                 metrics[k].update(metric[k].data.cpu().numpy())
 
@@ -290,7 +288,7 @@ def eval_epoch(model, data_loader, class_names, epoch):
 
         dets_true = [
             decode_boxes((logit(encode_class_ids(c)), r))
-            for c, r in zip(*maps)]
+            for c, r in zip(*labels)]
         images_true = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
             for i, d in zip(images, dets_true)]
@@ -319,12 +317,13 @@ def collate_cat_fn(batch):
 
 
 def collate_fn(batch):
-    images, maps = zip(*batch)
+    images, labels, anchors = zip(*batch)
 
     images = torch.utils.data.dataloader.default_collate(images)
-    maps = torch.utils.data.dataloader.default_collate(maps)
+    labels = torch.utils.data.dataloader.default_collate(labels)
+    anchors = torch.utils.data.dataloader.default_collate(anchors)
 
-    return images, maps
+    return images, labels, anchors
 
 
 def train():
