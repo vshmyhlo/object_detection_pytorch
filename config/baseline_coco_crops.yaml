@@ -28,7 +28,7 @@ anchors:
 
 loss:
   classification: focal
-  localization: smooth_l1
+  localization: iou
 
 opt:
   type: sgd
