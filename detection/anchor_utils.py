@@ -58,7 +58,8 @@ def compute_anchor(size, ratio, scale):
 # TODO: test
 def flatten_detection_map(input, num_anchors):
     *rest, c, h, w = input.size()
-    input = input.view(*rest, c // num_anchors, num_anchors * h * w)
-    input = input.transpose(-1, -2)
+    n_rest = len(rest)
+    input = input.permute(*range(n_rest), n_rest + 1, n_rest + 2, n_rest)
+    input = input.reshape(*rest, h * w * num_anchors, c // num_anchors)
 
     return input

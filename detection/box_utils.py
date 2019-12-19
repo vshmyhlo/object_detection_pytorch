@@ -16,6 +16,12 @@ def boxes_hw(boxes):
     return br - tl
 
 
+# TODO: test
+def boxes_aspect_ratio(boxes):
+    h, w = torch.unbind(boxes_hw(boxes), -1)
+    return w / h
+
+
 def boxes_pairwise_iou(a, b):
     iou = torchvision.ops.box_iou(a, b)
 

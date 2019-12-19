@@ -26,13 +26,16 @@ from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
 from detection.losses import boxes_iou_loss, smooth_l1_loss
+from detection.metrics import FPS
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
 
 # TODO: pin memory
+# TODO: plot box overlap distribution
 # TODO: smaller model/larger image
 # TODO: visualization scores sigmoid
+# TODO: fps
 # TODO: move logits slicing to helpers
 # TODO: freeze BN
 # TODO: generate boxes from masks
@@ -41,6 +44,7 @@ from detection.utils import logit, draw_boxes, DataLoaderSlice
 # TODO: rename all usages of "maps"
 # TODO: show preds before nms
 # TODO: show pred heatmaps
+# TODO: learn anchor sizes/scales
 
 
 MEAN = [0.485, 0.456, 0.406]
@@ -267,6 +271,7 @@ def eval_epoch(model, data_loader, class_names, epoch):
     metrics = {
         'loss': Mean(),
         'iou': Mean(),
+        'fps': FPS(),
     }
 
     model.eval()
@@ -277,6 +282,7 @@ def eval_epoch(model, data_loader, class_names, epoch):
 
             loss = compute_loss(input=output, target=labels, anchors=anchors)
             metrics['loss'].update(loss.data.cpu().numpy())
+            metrics['fps'].update(images.size(0))
 
             output = decode(output, anchors)
 
