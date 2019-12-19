@@ -31,11 +31,11 @@ from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
 
+# TODO: check again order of anchors at each level
 # TODO: pin memory
 # TODO: plot box overlap distribution
 # TODO: smaller model/larger image
 # TODO: visualization scores sigmoid
-# TODO: fps
 # TODO: move logits slicing to helpers
 # TODO: freeze BN
 # TODO: generate boxes from masks
