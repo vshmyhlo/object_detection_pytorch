@@ -1,7 +1,6 @@
 import torch
-import torchvision
 
-from detection.box_utils import boxes_pairwise_iou, boxes_center, boxes_hw
+from detection.box_utils import boxes_pairwise_iou, boxes_center, boxes_hw, per_class_nms
 
 
 def boxes_to_shifts_scales(boxes, anchors):
@@ -21,6 +20,7 @@ def shifts_scales_to_boxes(shifts_scales, anchors):
     return boxes
 
 
+# TODO: encode and decode has different class indexing
 # TODO: rename encode/decode with anchors
 def encode_boxes(input, anchors, min_iou, max_iou):
     class_ids, boxes = input
@@ -57,7 +57,7 @@ def decode_boxes(input):
     class_ids = class_ids[fg]
     scores = scores[fg]
 
-    keep = torchvision.ops.nms(boxes, scores, 0.5)
+    keep = per_class_nms(boxes, scores, class_ids, 0.5)
     boxes = boxes[keep]
     class_ids = class_ids[keep]
     scores = scores[keep]

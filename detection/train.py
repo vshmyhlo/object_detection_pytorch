@@ -31,7 +31,6 @@ from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
 
-# TODO: NMS per-class
 # TODO: check again order of anchors at each level
 # TODO: pin memory
 # TODO: random resize
@@ -39,6 +38,7 @@ from detection.utils import logit, draw_boxes, DataLoaderSlice
 # TODO: smaller model/larger image
 # TODO: visualization scores sigmoid
 # TODO: move logits slicing to helpers
+# TODO: iou + l1
 # TODO: freeze BN
 # TODO: generate boxes from masks
 # TODO: move scores decoding to loss
@@ -85,6 +85,7 @@ train_transform = T.Compose([
     RandomCrop(config.crop_size),
     RandomFlipLeftRight(),
     ApplyTo('image', T.Compose([
+        T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
         T.ToTensor(),
         T.Normalize(mean=MEAN, std=STD),
     ])),
