@@ -29,7 +29,7 @@ from detection.losses import boxes_iou_loss, smooth_l1_loss
 from detection.metrics import FPS
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
-from detection.utils import logit, draw_boxes, DataLoaderSlice, foreground_binary_coding
+from detection.utils import draw_boxes, DataLoaderSlice, foreground_binary_coding
 
 # TODO: maybe use 1-based class indexing (maybe better not)
 # TODO: check again order of anchors at each level
@@ -246,13 +246,13 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
             writer.add_scalar(k, metrics[k], global_step=epoch)
 
         dets_true = [
-            decode_boxes((logit(foreground_binary_coding(c, Dataset.num_classes)), r))
+            decode_boxes((foreground_binary_coding(c, Dataset.num_classes), r))
             for c, r in zip(*labels)]
         images_true = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
             for i, d in zip(images, dets_true)]
         dets_pred = [
-            decode_boxes((c, r))
+            decode_boxes((c.sigmoid(), r))
             for c, r in zip(*output)]
         images_pred = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
@@ -295,13 +295,13 @@ def eval_epoch(model, data_loader, class_names, epoch):
             writer.add_scalar(k, metrics[k], global_step=epoch)
 
         dets_true = [
-            decode_boxes((logit(foreground_binary_coding(c, Dataset.num_classes)), r))
+            decode_boxes((foreground_binary_coding(c, Dataset.num_classes), r))
             for c, r in zip(*labels)]
         images_true = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
             for i, d in zip(images, dets_true)]
         dets_pred = [
-            decode_boxes((c, r))
+            decode_boxes((c.sigmoid(), r))
             for c, r in zip(*output)]
         images_pred = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)

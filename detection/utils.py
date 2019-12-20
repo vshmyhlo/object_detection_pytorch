@@ -31,8 +31,6 @@ def draw_boxes(image, detections, class_names, line_width=2, shade=True):
     boxes[:, [0, 2]] = boxes[:, [0, 2]].clamp(0, image.size(1))
     boxes[:, [1, 3]] = boxes[:, [1, 3]].clamp(0, image.size(2))
 
-    scores = scores.sigmoid()  # TODO: fixme
-
     device = image.device
     image = image.permute(1, 2, 0).data.cpu().numpy()
 
