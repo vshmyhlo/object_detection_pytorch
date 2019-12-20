@@ -50,7 +50,7 @@ def decode_boxes(input):
     class_output, loc_output = input
 
     scores, class_ids = class_output.max(1)
-    fg = scores > 0.
+    fg = scores > 0.5
 
     boxes = loc_output
     boxes = boxes[fg]
