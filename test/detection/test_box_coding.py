@@ -1,7 +1,7 @@
 import torch
-from all_the_tools.torch.utils import one_hot
 
 from detection.box_coding import boxes_to_shifts_scales, shifts_scales_to_boxes, encode_boxes, decode_boxes
+from detection.utils import foreground_binary_coding
 
 
 def test_conversion():
@@ -37,8 +37,7 @@ def test_coding():
     expected = class_ids, boxes
 
     class_output, loc_output = encode_boxes(expected, anchors, min_iou=0.4, max_iou=0.5)
-    class_output = one_hot(class_output + 1, 10 + 2)[:, 2:]
-
+    class_output = foreground_binary_coding(class_output, 10)
     actual = decode_boxes((class_output, loc_output))
 
     for e, a in zip(expected, actual):

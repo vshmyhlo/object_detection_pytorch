@@ -12,7 +12,7 @@ import torch.utils.data
 import torchvision
 import torchvision.transforms as T
 from all_the_tools.metrics import Mean, Last
-from all_the_tools.torch.utils import Saver, one_hot, seed_torch
+from all_the_tools.torch.utils import Saver, seed_torch
 from all_the_tools.transforms import ApplyTo
 from all_the_tools.utils import seed_python
 from tensorboardX import SummaryWriter
@@ -29,8 +29,9 @@ from detection.losses import boxes_iou_loss, smooth_l1_loss
 from detection.metrics import FPS
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
-from detection.utils import logit, draw_boxes, DataLoaderSlice
+from detection.utils import logit, draw_boxes, DataLoaderSlice, foreground_binary_coding
 
+# TODO: maybe use 1-based class indexing (maybe better not)
 # TODO: check again order of anchors at each level
 # TODO: pin memory
 # TODO: random resize
@@ -102,11 +103,6 @@ eval_transform = T.Compose([
 ])
 
 
-# TODO: check all usages
-def encode_class_ids(input):
-    return one_hot(input + 1, Dataset.num_classes + 2)[:, 2:]
-
-
 def worker_init_fn(_):
     seed_python(torch.initial_seed() % 2**32)
 
@@ -115,7 +111,7 @@ def focal_loss(input, target, gamma=2., alpha=0.25):
     norm = (target > 0).sum()
     assert norm > 0
 
-    target = encode_class_ids(target)
+    target = foreground_binary_coding(target, Dataset.num_classes)
 
     prob = input.sigmoid()
     prob_true = prob * target + (1 - prob) * (1 - target)
@@ -250,7 +246,7 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
             writer.add_scalar(k, metrics[k], global_step=epoch)
 
         dets_true = [
-            decode_boxes((logit(encode_class_ids(c)), r))
+            decode_boxes((logit(foreground_binary_coding(c, Dataset.num_classes)), r))
             for c, r in zip(*labels)]
         images_true = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
@@ -299,7 +295,7 @@ def eval_epoch(model, data_loader, class_names, epoch):
             writer.add_scalar(k, metrics[k], global_step=epoch)
 
         dets_true = [
-            decode_boxes((logit(encode_class_ids(c)), r))
+            decode_boxes((logit(foreground_binary_coding(c, Dataset.num_classes)), r))
             for c, r in zip(*labels)]
         images_true = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)

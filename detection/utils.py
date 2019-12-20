@@ -3,6 +3,7 @@ from itertools import islice
 import numpy as np
 import torch
 from PIL import ImageFont, Image, ImageDraw
+from all_the_tools.torch.utils import one_hot
 
 
 class DataLoaderSlice(object):
@@ -63,3 +64,7 @@ def draw_boxes(image, detections, class_names, line_width=2, shade=True):
     image = torch.tensor(image).permute(2, 0, 1).to(device)
 
     return image
+
+
+def foreground_binary_coding(input, num_classes):
+    return one_hot(input + 1, num_classes + 2)[:, 2:]
