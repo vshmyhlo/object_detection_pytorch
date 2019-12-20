@@ -41,6 +41,5 @@ def test_coding():
 
     actual = decode_boxes((class_output, loc_output))
 
-    print('>' * 10)
-    print(expected)
-    print(actual)
+    for e, a in zip(expected, actual):
+        assert torch.equal(e, a)
