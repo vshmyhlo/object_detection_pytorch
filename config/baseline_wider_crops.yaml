@@ -24,6 +24,10 @@ anchors:
     - 1.26
     - 1.587
 
+loss:
+  classification: focal
+  localization: iou
+
 opt:
   type: sgd
   learning_rate: 0.01

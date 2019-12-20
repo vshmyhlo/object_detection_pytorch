@@ -31,8 +31,10 @@ from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
 from detection.utils import logit, draw_boxes, DataLoaderSlice
 
+# TODO: NMS per-class
 # TODO: check again order of anchors at each level
 # TODO: pin memory
+# TODO: random resize
 # TODO: plot box overlap distribution
 # TODO: smaller model/larger image
 # TODO: visualization scores sigmoid
