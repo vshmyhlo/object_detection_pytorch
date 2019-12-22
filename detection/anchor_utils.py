@@ -55,7 +55,6 @@ def compute_anchor(size, ratio, scale):
     return torch.tensor((h, w))
 
 
-# TODO: test
 def flatten_detection_map(input, num_anchors):
     *rest, c, h, w = input.size()
     n_rest = len(rest)

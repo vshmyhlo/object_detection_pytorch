@@ -1,6 +1,7 @@
 import torch
 
 from detection.box_utils import boxes_pairwise_iou, boxes_center, boxes_hw, per_class_nms
+from detection.utils import Detections
 
 
 def boxes_to_shifts_scales(boxes, anchors):
@@ -22,26 +23,23 @@ def shifts_scales_to_boxes(shifts_scales, anchors):
 
 # TODO: encode and decode has different class indexing
 # TODO: rename encode/decode with anchors
-def encode_boxes(input, anchors, min_iou, max_iou):
-    class_ids, boxes = input
-
-    if boxes.size(0) == 0:
+def encode_boxes(detections, anchors, min_iou, max_iou):
+    if detections.boxes.size(0) == 0:
         class_output = torch.zeros(anchors.size(0), dtype=torch.long)
         loc_output = torch.zeros(anchors.size(0), 4, dtype=torch.float)
 
         return class_output, loc_output
 
-    ious = boxes_pairwise_iou(boxes, anchors)
+    ious = boxes_pairwise_iou(detections.boxes, anchors)
     iou_values, iou_indices = ious.max(0)
 
     # build class_output
-    class_output = class_ids[iou_indices] + 1
+    class_output = detections.class_ids[iou_indices] + 1
     class_output[iou_values < min_iou] = 0
     class_output[(min_iou <= iou_values) & (iou_values <= max_iou)] = -1
 
     # build loc_output
-    boxes = boxes[iou_indices]
-    loc_output = boxes
+    loc_output = detections.boxes[iou_indices]
 
     return class_output, loc_output
 
@@ -62,4 +60,7 @@ def decode_boxes(input):
     class_ids = class_ids[keep]
     scores = scores[keep]
 
-    return class_ids, boxes, scores
+    return Detections(
+        class_ids=class_ids,
+        boxes=boxes,
+        scores=scores)

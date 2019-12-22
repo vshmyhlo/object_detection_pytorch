@@ -1,6 +1,6 @@
 import torch
 
-from detection.anchor_utils import arrange_anchor_on_grid, arrange_anchors_on_grid
+from detection.anchor_utils import arrange_anchor_on_grid, arrange_anchors_on_grid, flatten_detection_map
 
 
 def test_arange_anchors_on_grid():
@@ -44,5 +44,18 @@ def test_arange_anchor_on_grid():
         [14, -2, 34, 18],
         [14, 14, 34, 34],
     ], dtype=torch.float).t().view(4, 2, 2)
+
+    assert torch.equal(actual, expected)
+
+
+def test_flatten_detection_map():
+    boxes = torch.tensor([
+        [0, 0, 10, 20],
+        [10, 20, 20, 40],
+    ], dtype=torch.float)
+
+    input = boxes.view(1, 2 * 4, 1, 1)
+    actual = flatten_detection_map(input, 2)
+    expected = boxes.unsqueeze(0)
 
     assert torch.equal(actual, expected)

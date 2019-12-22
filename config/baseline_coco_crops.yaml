@@ -1,6 +1,7 @@
 dataset: coco
 epochs: 50
-batch_size: 8
+train_batch_size: 8
+eval_batch_size: 16
 resize_size: 608
 crop_size: 608
 train_steps: 1000

@@ -1,6 +1,6 @@
 import torch
 
-from detection.box_utils import boxes_area, boxes_pairwise_iou, boxes_center, boxes_hw
+from detection.box_utils import boxes_area, boxes_pairwise_iou, boxes_center, boxes_hw, boxes_clip
 
 
 def test_boxes_center():
@@ -72,3 +72,18 @@ def test_boxes_area():
     ], dtype=torch.float)
 
     assert torch.allclose(actual, expected)
+
+
+def test_boxes_clip():
+    boxes = torch.tensor([
+        [-10, 5, 20, 30],
+        [10, 10, 200, 300],
+    ])
+
+    actual = boxes_clip(boxes, (100, 150))
+    expected = torch.tensor([
+        [0, 5, 20, 30],
+        [10, 10, 100, 150],
+    ])
+
+    assert torch.equal(actual, expected)

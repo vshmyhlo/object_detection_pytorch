@@ -1,14 +1,14 @@
 import torch
 
 from detection.box_coding import boxes_to_shifts_scales, shifts_scales_to_boxes, encode_boxes, decode_boxes
-from detection.utils import foreground_binary_coding
+from detection.utils import foreground_binary_coding, Detections
 
 
 def test_conversion():
-    anchors = torch.empty(10, 4).uniform_() * 10
+    anchors = torch.randint(0, 100, size=(10, 4), dtype=torch.float)
     anchors[:, 2:] += anchors[:, :2]
 
-    boxes = torch.empty(10, 4).uniform_() * 10
+    boxes = torch.randint(0, 100, size=(10, 4), dtype=torch.float)
     boxes[:, 2:] += boxes[:, :2]
 
     assert torch.allclose(
@@ -25,20 +25,21 @@ def test_conversion():
 
 
 def test_coding():
-    boxes = torch.tensor([
-        [0, 0, 10, 10],
-    ], dtype=torch.float)
-    class_ids = torch.randint(0, 10, (boxes.size(0),))
     anchors = torch.tensor([
         [1, 1, 9, 9],
         [10, 10, 20, 20],
     ], dtype=torch.float)
 
-    expected = class_ids, boxes
-
+    expected = Detections(
+        class_ids=torch.randint(0, 10, (1,)),
+        boxes=torch.tensor([
+            [0, 0, 10, 10],
+        ], dtype=torch.float),
+        scores=None)
+   
     class_output, loc_output = encode_boxes(expected, anchors, min_iou=0.4, max_iou=0.5)
     class_output = foreground_binary_coding(class_output, 10)
     actual = decode_boxes((class_output, loc_output))
 
-    for e, a in zip(expected, actual):
-        assert torch.equal(e, a)
+    assert torch.equal(expected.boxes, actual.boxes)
+    assert torch.equal(expected.class_ids, actual.class_ids)

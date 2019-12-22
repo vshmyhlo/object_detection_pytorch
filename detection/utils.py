@@ -1,9 +1,15 @@
+from collections import namedtuple
 from itertools import islice
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from PIL import ImageFont, Image, ImageDraw
 from all_the_tools.torch.utils import one_hot
+
+from detection.box_utils import boxes_clip
+
+Detections = namedtuple('Detections', ['class_ids', 'boxes', 'scores'])
 
 
 class DataLoaderSlice(object):
@@ -22,21 +28,21 @@ def logit(input):
     return torch.log(input / (1 - input))
 
 
+# TODO: fix boxes usage
 def draw_boxes(image, detections, class_names, line_width=2, shade=True):
     font = ImageFont.truetype('./data/Droid+Sans+Mono+Awesome.ttf', size=14)
 
-    class_ids, boxes, scores = detections
-
-    boxes = boxes.round().long()
-    boxes[:, [0, 2]] = boxes[:, [0, 2]].clamp(0, image.size(1))
-    boxes[:, [1, 3]] = boxes[:, [1, 3]].clamp(0, image.size(2))
+    detections = Detections(
+        class_ids=detections.class_ids,
+        boxes=boxes_clip(detections.boxes, image.size()[1:3]).round().long(),
+        scores=detections.scores)
 
     device = image.device
     image = image.permute(1, 2, 0).data.cpu().numpy()
 
     if shade:
         mask = np.zeros_like(image, dtype=np.bool)
-        for t, l, b, r in boxes.data.cpu().numpy():
+        for t, l, b, r in detections.boxes.data.cpu().numpy():
             mask[t:b, l:r] = True
         image = np.where(mask, image, image * 0.5)
 
@@ -44,7 +50,10 @@ def draw_boxes(image, detections, class_names, line_width=2, shade=True):
     image = Image.fromarray(image)
     draw = ImageDraw.Draw(image)
 
-    for c, (t, l, b, r), s in zip(class_ids.data.cpu().numpy(), boxes.data.cpu().numpy(), scores.data.cpu().numpy()):
+    for c, (t, l, b, r), s in zip(
+            detections.class_ids.data.cpu().numpy(),
+            detections.boxes.data.cpu().numpy(),
+            detections.scores.data.cpu().numpy()):
         if len(class_names) > 1:
             colors = np.random.RandomState(42).uniform(85, 255, size=(len(class_names), 3)).round().astype(np.uint8)
             color = tuple(colors[c])
@@ -66,3 +75,15 @@ def draw_boxes(image, detections, class_names, line_width=2, shade=True):
 
 def foreground_binary_coding(input, num_classes):
     return one_hot(input + 1, num_classes + 2)[:, 2:]
+
+
+def pr_curve_plot(pr):
+    fig = plt.figure()
+    plt.plot(pr[:, 1], pr[:, 0])
+    plt.xlabel('recall')
+    plt.ylabel('precision')
+    plt.fill_between(pr[:, 1], 0, pr[:, 0], alpha=0.1)
+    plt.xlim(0, 1)
+    plt.ylim(0, 1)
+
+    return fig

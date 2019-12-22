@@ -7,7 +7,8 @@ def build_default_config():
     config.seed = 42
     config.dataset = 'coco'
     config.epochs = 100
-    config.batch_size = 32
+    config.train_batch_size = 32
+    config.eval_batch_size = 32
     config.resize_size = 640
     config.crop_size = 640
     config.train_steps = 1000
@@ -39,7 +40,7 @@ def build_default_config():
     config.loss = CN()
     config.loss.classification = 'focal'
     config.loss.localization = 'smooth_l1'
-   
+
     config.opt = CN()
     config.opt.type = 'sgd'
     config.opt.learning_rate = 0.01

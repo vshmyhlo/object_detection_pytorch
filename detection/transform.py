@@ -5,6 +5,7 @@ from PIL import Image
 from detection.anchor_utils import arrange_anchors_on_grid
 from detection.box_coding import encode_boxes
 from detection.box_utils import boxes_area
+from detection.utils import Detections
 
 
 class Resize(object):
@@ -57,13 +58,16 @@ class BuildLabels(object):
         self.max_iou = max_iou
 
     def __call__(self, input):
-        image, dets = input['image'], (input['class_ids'], input['boxes'])
+        detections = Detections(
+            class_ids=input['class_ids'],
+            boxes=input['boxes'],
+            scores=None)
 
-        _, h, w = image.size()
+        _, h, w = input['image'].size()
         anchors = arrange_anchors_on_grid(torch.tensor((h, w)), self.anchors)
-        maps = encode_boxes(dets, anchors, min_iou=self.min_iou, max_iou=self.max_iou)
+        labels = encode_boxes(detections, anchors, min_iou=self.min_iou, max_iou=self.max_iou)
 
-        return image, maps, anchors
+        return input['image'], labels, anchors, detections
 
 
 def resize(input, size, interpolation=Image.BILINEAR):

@@ -69,6 +69,14 @@ def boxes_outer(a, b):
     return outer
 
 
+def boxes_clip(boxes, hw):
+    boxes = boxes.clone()
+    boxes[:, [0, 2]] = boxes[:, [0, 2]].clamp(0, hw[0])
+    boxes[:, [1, 3]] = boxes[:, [1, 3]].clamp(0, hw[1])
+
+    return boxes
+
+
 # TODO: test
 def per_class_nms(boxes, scores, class_ids, iou_threshold):
     mask = torch.zeros(boxes.size(0), dtype=torch.bool)

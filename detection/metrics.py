@@ -1,6 +1,8 @@
 import time
 
-from all_the_tools.metrics import Mean
+from all_the_tools.metrics import Mean, Metric
+
+from detection.map import per_class_precision_recall
 
 
 class FPS(Mean):
@@ -22,3 +24,21 @@ class FPS(Mean):
         super().reset()
 
         self.t = None
+
+
+class PerClassPR(Metric):
+    def __init__(self):
+        self.true = []
+        self.pred = []
+
+    def compute(self):
+        return per_class_precision_recall(self.true, self.pred, 0.5)
+
+    def update(self, value):
+        true, pred = value
+        self.true.extend(true)
+        self.pred.extend(pred)
+
+    def reset(self):
+        self.true = []
+        self.pred = []
