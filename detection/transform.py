@@ -56,7 +56,7 @@ class FilterBoxes(object):
 
     def __call__(self, input):
         return filter_boxes(input, self.min_size)
-   
+
 
 class BuildLabels(object):
     def __init__(self, anchors, min_iou, max_iou):
@@ -138,7 +138,7 @@ def crop(input, tl, hw):
     }
 
 
-# TODO: test min-size removal
+# TODO: test
 def filter_boxes(input, min_size):
     keep = boxes_area(input['boxes']) >= min_size
 
