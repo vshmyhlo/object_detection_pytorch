@@ -8,4 +8,3 @@
 
 ### WIDER
 ![WIDER](./data/wider.png)
-
