@@ -4,7 +4,7 @@ from PIL import Image
 
 from detection.anchor_utils import arrange_anchors_on_grid
 from detection.box_coding import encode_boxes
-from detection.box_utils import boxes_area
+from detection.box_utils import boxes_area, boxes_clip
 from detection.utils import Detections
 
 
@@ -29,9 +29,8 @@ class RandomResize(object):
 
 
 class RandomCrop(object):
-    def __init__(self, size, min_size=8**2):
+    def __init__(self, size):
         self.size = size
-        self.min_size = min_size
 
     def __call__(self, input):
         image = input['image']
@@ -40,7 +39,7 @@ class RandomCrop(object):
         t = np.random.randint(0, h - self.size + 1)
         l = np.random.randint(0, w - self.size + 1)
 
-        return crop(input, (t, l), (self.size, self.size), min_size=self.min_size)
+        return crop(input, (t, l), (self.size, self.size))
 
 
 class RandomFlipLeftRight(object):
@@ -50,6 +49,14 @@ class RandomFlipLeftRight(object):
 
         return input
 
+
+class FilterBoxes(object):
+    def __init__(self, min_size=8**2):
+        self.min_size = min_size
+
+    def __call__(self, input):
+        return filter_boxes(input, self.min_size)
+   
 
 class BuildLabels(object):
     def __init__(self, anchors, min_iou, max_iou):
@@ -111,8 +118,7 @@ def denormalize(tensor, mean, std, inplace=False):
     return tensor
 
 
-# TODO: test min-size removal
-def crop(input, tl, hw, min_size):
+def crop(input, tl, hw):
     image, class_ids, boxes = input['image'], input['class_ids'], input['boxes']
 
     t, l = tl
@@ -122,16 +128,22 @@ def crop(input, tl, hw, min_size):
 
     boxes[:, [0, 2]] -= t
     boxes[:, [1, 3]] -= l
-    boxes[:, [0, 2]] = boxes[:, [0, 2]].clamp(0, h)
-    boxes[:, [1, 3]] = boxes[:, [1, 3]].clamp(0, w)
-
-    keep = boxes_area(boxes) >= min_size
-    class_ids = class_ids[keep]
-    boxes = boxes[keep]
+    boxes = boxes_clip(boxes, (h, w))
 
     return {
         **input,
         'image': image,
         'class_ids': class_ids,
         'boxes': boxes,
+    }
+
+
+# TODO: test min-size removal
+def filter_boxes(input, min_size):
+    keep = boxes_area(input['boxes']) >= min_size
+
+    return {
+        **input,
+        'class_ids': input['class_ids'][keep],
+        'boxes': input['boxes'][keep],
     }

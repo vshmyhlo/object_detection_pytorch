@@ -29,9 +29,10 @@ from detection.losses import boxes_iou_loss, smooth_l1_loss
 from detection.map import per_class_precision_recall_to_map
 from detection.metrics import FPS, PerClassPR
 from detection.model import RetinaNet
-from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
+from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize, FilterBoxes
 from detection.utils import draw_boxes, DataLoaderSlice, foreground_binary_coding, pr_curve_plot, fill_scores
 
+# TODO: clip boxes in decoding?
 # TODO: maybe use 1-based class indexing (maybe better not)
 # TODO: check again order of anchors at each level
 # TODO: eval on full-scale
@@ -95,6 +96,7 @@ train_transform = T.Compose([
         T.ToTensor(),
         T.Normalize(mean=MEAN, std=STD),
     ])),
+    FilterBoxes(),
     BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
 ])
 eval_transform = T.Compose([
@@ -104,6 +106,7 @@ eval_transform = T.Compose([
         T.ToTensor(),
         T.Normalize(mean=MEAN, std=STD),
     ])),
+    FilterBoxes(),
     BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
 ])
 
