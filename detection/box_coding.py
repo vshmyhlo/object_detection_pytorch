@@ -1,12 +1,12 @@
 import torch
 
-from detection.box_utils import boxes_pairwise_iou, boxes_center, boxes_hw, per_class_nms
+from detection.box_utils import boxes_pairwise_iou, boxes_center, boxes_size, per_class_nms
 from detection.utils import Detections
 
 
 def boxes_to_shifts_scales(boxes, anchors):
-    shifts = (boxes_center(boxes) - boxes_center(anchors)) / boxes_hw(anchors)
-    scales = boxes_hw(boxes) / boxes_hw(anchors)
+    shifts = (boxes_center(boxes) - boxes_center(anchors)) / boxes_size(anchors)
+    scales = boxes_size(boxes) / boxes_size(anchors)
     shifts_scales = torch.cat([shifts, scales.log()], -1)
 
     return shifts_scales
@@ -14,8 +14,8 @@ def boxes_to_shifts_scales(boxes, anchors):
 
 def shifts_scales_to_boxes(shifts_scales, anchors):
     shifts, scales = torch.split(shifts_scales, 2, -1)
-    centers = shifts * boxes_hw(anchors) + boxes_center(anchors)
-    sizes = scales.exp() * boxes_hw(anchors)
+    centers = shifts * boxes_size(anchors) + boxes_center(anchors)
+    sizes = scales.exp() * boxes_size(anchors)
     boxes = torch.cat([centers - sizes / 2, centers + sizes / 2], -1)
 
     return boxes

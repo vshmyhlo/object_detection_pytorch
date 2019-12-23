@@ -12,6 +12,7 @@ from PIL import Image
 
 class Dataset(torch.utils.data.Dataset):
     num_classes = 1
+    class_names = ['face']
 
     def __init__(self, path, subset, transform=None):
         self.transform = transform
@@ -26,10 +27,6 @@ class Dataset(torch.utils.data.Dataset):
                 os.path.join(os.path.join(path, 'wider_face_split', 'wider_face_val_bbx_gt.txt')))
         else:
             raise AssertionError('invalid subset {}'.format(subset))
-
-    @property
-    def class_names(self):
-        return ['face']
 
     def load_data(self, path):
         data = []

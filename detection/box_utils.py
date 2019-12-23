@@ -11,14 +11,14 @@ def boxes_center(boxes):
     return (tl + br) / 2
 
 
-def boxes_hw(boxes):
+def boxes_size(boxes):
     tl, br = boxes_tl_br(boxes)
     return br - tl
 
 
 # TODO: test
 def boxes_aspect_ratio(boxes):
-    h, w = torch.unbind(boxes_hw(boxes), -1)
+    h, w = torch.unbind(boxes_size(boxes), -1)
     return w / h
 
 
@@ -29,7 +29,7 @@ def boxes_pairwise_iou(a, b):
 
 
 def boxes_area(boxes):
-    hw = boxes_hw(boxes)
+    hw = boxes_size(boxes)
     area = torch.prod(hw, -1)
 
     return area
