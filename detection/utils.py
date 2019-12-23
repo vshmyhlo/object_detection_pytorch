@@ -9,7 +9,22 @@ from all_the_tools.torch.utils import one_hot
 
 from detection.box_utils import boxes_clip
 
-Detections = namedtuple('Detections', ['class_ids', 'boxes', 'scores'])
+
+class Detections(namedtuple('Detections', ['class_ids', 'boxes', 'scores'])):
+    def to(self, device):
+        return self.apply(lambda x: x.to(device))
+
+    def apply(self, f):
+        def apply(x):
+            if x is None:
+                return None
+            else:
+                return f(x)
+
+        return Detections(
+            class_ids=apply(self.class_ids),
+            boxes=apply(self.boxes),
+            scores=apply(self.scores))
 
 
 class DataLoaderSlice(object):
@@ -26,6 +41,15 @@ class DataLoaderSlice(object):
 
 def logit(input):
     return torch.log(input / (1 - input))
+
+
+def fill_scores(detections):
+    assert detections.scores is None
+
+    return Detections(
+        class_ids=detections.class_ids,
+        boxes=detections.boxes,
+        scores=torch.ones_like(detections.class_ids, dtype=torch.float))
 
 
 # TODO: fix boxes usage

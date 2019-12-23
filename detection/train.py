@@ -26,13 +26,18 @@ from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
 from detection.losses import boxes_iou_loss, smooth_l1_loss
-from detection.metrics import FPS
+from detection.map import per_class_precision_recall_to_map
+from detection.metrics import FPS, PerClassPR
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize
-from detection.utils import draw_boxes, DataLoaderSlice, foreground_binary_coding
+from detection.utils import draw_boxes, DataLoaderSlice, foreground_binary_coding, pr_curve_plot, fill_scores
 
 # TODO: maybe use 1-based class indexing (maybe better not)
 # TODO: check again order of anchors at each level
+# TODO: eval on full-scale
+# TODO: min/max object size filter
+# TODO: boxfilter separate transform
+# TODO: compute metric with original boxes
 # TODO: pin memory
 # TODO: random resize
 # TODO: plot box overlap distribution
@@ -221,8 +226,9 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
 
     model.train()
     optimizer.zero_grad()
-    for i, (images, labels, anchors) in enumerate(tqdm(data_loader, desc='epoch {} train'.format(epoch)), 1):
-        images, labels, anchors = images.to(DEVICE), [m.to(DEVICE) for m in labels], anchors.to(DEVICE)
+    for i, (images, labels, anchors, dets_true) in enumerate(tqdm(data_loader, desc='epoch {} train'.format(epoch)), 1):
+        images, labels, anchors, dets_true = \
+            images.to(DEVICE), [m.to(DEVICE) for m in labels], anchors.to(DEVICE), [d.to(DEVICE) for d in dets_true]
         output = model(images)
 
         loss = compute_loss(input=output, target=labels, anchors=anchors)
@@ -245,15 +251,12 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
         for k in metrics:
             writer.add_scalar(k, metrics[k], global_step=epoch)
 
-        dets_true = [
-            decode_boxes((foreground_binary_coding(c, Dataset.num_classes), r))
-            for c, r in zip(*labels)]
-        images_true = [
-            draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
-            for i, d in zip(images, dets_true)]
         dets_pred = [
             decode_boxes((c.sigmoid(), r))
             for c, r in zip(*output)]
+        images_true = [
+            draw_boxes(denormalize(i, mean=MEAN, std=STD), fill_scores(d), class_names)
+            for i, d in zip(images, dets_true)]
         images_pred = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
             for i, d in zip(images, dets_pred)]
@@ -271,12 +274,14 @@ def eval_epoch(model, data_loader, class_names, epoch):
         'loss': Mean(),
         'iou': Mean(),
         'fps': FPS(),
+        'pr': PerClassPR(),
     }
 
     model.eval()
     with torch.no_grad():
-        for images, labels, anchors in tqdm(data_loader, desc='epoch {} evaluation'.format(epoch)):
-            images, labels, anchors = images.to(DEVICE), [m.to(DEVICE) for m in labels], anchors.to(DEVICE)
+        for images, labels, anchors, dets_true in tqdm(data_loader, desc='epoch {} evaluation'.format(epoch)):
+            images, labels, anchors, dets_true = \
+                images.to(DEVICE), [m.to(DEVICE) for m in labels], anchors.to(DEVICE), [d.to(DEVICE) for d in dets_true]
             output = model(images)
 
             loss = compute_loss(input=output, target=labels, anchors=anchors)
@@ -285,24 +290,33 @@ def eval_epoch(model, data_loader, class_names, epoch):
 
             output = decode(output, anchors)
 
+            dets_pred = [
+                decode_boxes((c.sigmoid(), r))
+                for c, r in zip(*output)]
+            metrics['pr'].update((dets_true, dets_pred))
+
             metric = compute_metric(input=output, target=labels)
             for k in metric:
                 metrics[k].update(metric[k].data.cpu().numpy())
 
         metrics = {k: metrics[k].compute_and_reset() for k in metrics}
+        pr = metrics['pr']
+        del metrics['pr']
+        metrics['map'] = per_class_precision_recall_to_map(pr)
         print('[EPOCH {}][EVAL] {}'.format(epoch, ', '.join('{}: {:.8f}'.format(k, metrics[k]) for k in metrics)))
         for k in metrics:
             writer.add_scalar(k, metrics[k], global_step=epoch)
 
-        dets_true = [
-            decode_boxes((foreground_binary_coding(c, Dataset.num_classes), r))
-            for c, r in zip(*labels)]
-        images_true = [
-            draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
-            for i, d in zip(images, dets_true)]
+        for class_id in pr:
+            writer.add_figure(
+                'pr/{}'.format(class_names[class_id]), pr_curve_plot(pr[class_id]), global_step=epoch)
+
         dets_pred = [
             decode_boxes((c.sigmoid(), r))
             for c, r in zip(*output)]
+        images_true = [
+            draw_boxes(denormalize(i, mean=MEAN, std=STD), fill_scores(d), class_names)
+            for i, d in zip(images, dets_true)]
         images_pred = [
             draw_boxes(denormalize(i, mean=MEAN, std=STD), d, class_names)
             for i, d in zip(images, dets_pred)]
@@ -313,25 +327,14 @@ def eval_epoch(model, data_loader, class_names, epoch):
             'images_pred', torchvision.utils.make_grid(images_pred, nrow=4, normalize=True), global_step=epoch)
 
 
-def collate_cat_fn(batch):
-    class_ids, boxes = zip(*batch)
-    image_ids = [torch.full_like(c, i) for i, c in enumerate(class_ids)]
-
-    class_ids = torch.cat(class_ids, 0)
-    boxes = torch.cat(boxes, 0)
-    image_ids = torch.cat(image_ids, 0)
-
-    return class_ids, boxes, image_ids
-
-
 def collate_fn(batch):
-    images, labels, anchors = zip(*batch)
+    images, labels, anchors, dets = zip(*batch)
 
     images = torch.utils.data.dataloader.default_collate(images)
     labels = torch.utils.data.dataloader.default_collate(labels)
     anchors = torch.utils.data.dataloader.default_collate(anchors)
 
-    return images, labels, anchors
+    return images, labels, anchors, dets
 
 
 def train():
@@ -341,7 +344,7 @@ def train():
 
     train_data_loader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=config.batch_size,
+        batch_size=config.train_batch_size,
         drop_last=True,
         shuffle=True,
         num_workers=args.workers,
@@ -350,8 +353,8 @@ def train():
     train_data_loader = DataLoaderSlice(train_data_loader, config.train_steps)
     eval_data_loader = torch.utils.data.DataLoader(
         eval_dataset,
-        batch_size=config.batch_size,
-        drop_last=True,
+        batch_size=config.eval_batch_size,
+        shuffle=True,
         num_workers=args.workers,
         collate_fn=collate_fn,
         worker_init_fn=worker_init_fn)
