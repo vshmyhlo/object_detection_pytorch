@@ -1,10 +1,10 @@
 dataset: coco
-epochs: 100
+epochs: 50
 train_batch_size: 8
 eval_batch_size: 16
 resize_size: 500
 crop_size: 500
-train_steps: 1000
+train_steps: 2000
 
 anchors:
   min_iou: 0.4

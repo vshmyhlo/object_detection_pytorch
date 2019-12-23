@@ -16,7 +16,6 @@ from all_the_tools.torch.utils import Saver, seed_torch
 from all_the_tools.transforms import ApplyTo
 from all_the_tools.utils import seed_python
 from tensorboardX import SummaryWriter
-from torch.nn import functional as F
 from tqdm import tqdm
 
 from detection.anchor_utils import compute_anchor
@@ -25,12 +24,12 @@ from detection.box_utils import boxes_iou
 from detection.config import build_default_config
 from detection.datasets.coco import Dataset as CocoDataset
 from detection.datasets.wider import Dataset as WiderDataset
-from detection.losses import boxes_iou_loss, smooth_l1_loss
+from detection.losses import boxes_iou_loss, smooth_l1_loss, focal_loss
 from detection.map import per_class_precision_recall_to_map
 from detection.metrics import FPS, PerClassPR
 from detection.model import RetinaNet
 from detection.transform import Resize, BuildLabels, RandomCrop, RandomFlipLeftRight, denormalize, FilterBoxes
-from detection.utils import draw_boxes, DataLoaderSlice, foreground_binary_coding, pr_curve_plot, fill_scores
+from detection.utils import draw_boxes, DataLoaderSlice, pr_curve_plot, fill_scores
 
 # TODO: clip boxes in decoding?
 # TODO: maybe use 1-based class indexing (maybe better not)
@@ -101,12 +100,12 @@ train_transform = T.Compose([
 ])
 eval_transform = T.Compose([
     Resize(config.resize_size),
-    RandomCrop(config.crop_size),
+    # RandomCrop(config.crop_size),
     ApplyTo('image', T.Compose([
         T.ToTensor(),
         T.Normalize(mean=MEAN, std=STD),
     ])),
-    FilterBoxes(),
+    # FilterBoxes(),
     BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
 ])
 
@@ -115,24 +114,10 @@ def worker_init_fn(_):
     seed_python(torch.initial_seed() % 2**32)
 
 
-def focal_loss(input, target, gamma=2., alpha=0.25):
-    norm = (target > 0).sum()
-    assert norm > 0
-
-    target = foreground_binary_coding(target, Dataset.num_classes)
-
-    prob = input.sigmoid()
-    prob_true = prob * target + (1 - prob) * (1 - target)
-    alpha = alpha * target + (1 - alpha) * (1 - target)
-    weight = alpha * (1 - prob_true)**gamma
-
-    loss = F.binary_cross_entropy_with_logits(input=input, target=target, reduction='none')
-    loss = (weight * loss).sum() / norm
-
-    return loss
-
-
 def compute_classification_loss(input, target):
+    if input.numel() == 0:
+        return torch.tensor(0.)
+
     if config.loss.classification == 'focal':
         loss = focal_loss(input=input, target=target)
     else:
@@ -142,6 +127,9 @@ def compute_classification_loss(input, target):
 
 
 def compute_localization_loss(input, target, anchors):
+    if input.numel() == 0:
+        return torch.tensor(0.)
+
     if config.loss.localization == 'smooth_l1':
         target = boxes_to_shifts_scales(target, anchors)
         loss = smooth_l1_loss(input=input, target=target)
