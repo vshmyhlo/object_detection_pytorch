@@ -1,5 +1,4 @@
 from collections import namedtuple
-from itertools import islice
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,15 +27,25 @@ class Detections(namedtuple('Detections', ['class_ids', 'boxes', 'scores'])):
 
 
 class DataLoaderSlice(object):
-    def __init__(self, data_loader, max_size):
+    def __init__(self, data_loader, size):
         self.data_loader = data_loader
-        self.max_size = max_size
+        self.size = size
+        self.iter = None
 
     def __len__(self):
-        return min(len(self.data_loader), self.max_size)
+        return self.size
 
     def __iter__(self):
-        return islice(self.data_loader, self.max_size)
+        i = 0
+        while i < self.size:
+            if self.iter is None:
+                self.iter = iter(self.data_loader)
+
+            try:
+                yield next(self.iter)
+                i += 1
+            except StopIteration:
+                self.iter = None
 
 
 def logit(input):

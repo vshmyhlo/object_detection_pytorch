@@ -341,7 +341,8 @@ def train():
         num_workers=args.workers,
         collate_fn=collate_fn,
         worker_init_fn=worker_init_fn)
-    train_data_loader = DataLoaderSlice(train_data_loader, config.train_steps)
+    if config.train_steps is not None:
+        train_data_loader = DataLoaderSlice(train_data_loader, config.train_steps)
     eval_data_loader = torch.utils.data.DataLoader(
         eval_dataset,
         batch_size=config.eval_batch_size,
