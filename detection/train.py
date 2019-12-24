@@ -100,12 +100,12 @@ train_transform = T.Compose([
 ])
 eval_transform = T.Compose([
     Resize(config.resize_size),
-    # RandomCrop(config.crop_size),
+    RandomCrop(config.crop_size),
     ApplyTo('image', T.Compose([
         T.ToTensor(),
         T.Normalize(mean=MEAN, std=STD),
     ])),
-    # FilterBoxes(),
+    FilterBoxes(),
     BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
 ])
 
