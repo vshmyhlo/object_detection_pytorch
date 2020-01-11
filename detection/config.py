@@ -13,6 +13,9 @@ def build_default_config():
     config.crop_size = 640
     config.train_steps = 1000
 
+    config.model = CN()
+    config.model.backbone = 'resnet50'
+
     config.anchors = CN()
     config.anchors.min_iou = 0.4
     config.anchors.max_iou = 0.5

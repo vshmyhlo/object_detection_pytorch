@@ -4,9 +4,9 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
 
 from detection.anchor_utils import flatten_detection_map
+from detection.model.backbone import EfficientNetB0, ResNet50
 
 
 class ReLU(nn.ReLU):
@@ -23,32 +23,6 @@ class ConvNorm(nn.Sequential):
         super().__init__(
             nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=kernel_size // 2),
             Norm(out_channels))
-
-
-class Backbone(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.model = torchvision.models.resnet50(pretrained=True)
-
-    def forward(self, input):
-        input = self.model.conv1(input)
-        input = self.model.bn1(input)
-        input = self.model.relu(input)
-        c1 = input
-        input = self.model.maxpool(input)
-        input = self.model.layer1(input)
-        c2 = input
-        input = self.model.layer2(input)
-        c3 = input
-        input = self.model.layer3(input)
-        c4 = input
-        input = self.model.layer4(input)
-        c5 = input
-
-        input = [None, c1, c2, c3, c4, c5]
-
-        return input
 
 
 class UpsampleMerge(nn.Module):
@@ -71,17 +45,17 @@ class UpsampleMerge(nn.Module):
 
 # TODO: optimize level calculation
 class FPN(nn.Module):
-    def __init__(self, anchor_levels):
+    def __init__(self, anchor_levels, featuremap_depths):
         super().__init__()
 
-        self.c5_to_p6 = ConvNorm(2048, 256, 3, stride=2)
+        self.c5_to_p6 = ConvNorm(featuremap_depths[5], 256, 3, stride=2)
         self.p6_to_p7 = nn.Sequential(
             ReLU(inplace=True),
             ConvNorm(256, 256, 3, stride=2)) if anchor_levels[7] else None
-        self.c5_to_p5 = ConvNorm(2048, 256, 1)
-        self.p5c4_to_p4 = UpsampleMerge(1024)
-        self.p4c3_to_p3 = UpsampleMerge(512)
-        self.p3c2_to_p2 = UpsampleMerge(256) if anchor_levels[2] else None
+        self.c5_to_p5 = ConvNorm(featuremap_depths[5], 256, 1)
+        self.p5c4_to_p4 = UpsampleMerge(featuremap_depths[4])
+        self.p4c3_to_p3 = UpsampleMerge(featuremap_depths[3])
+        self.p3c2_to_p2 = UpsampleMerge(featuremap_depths[2]) if anchor_levels[2] else None
 
     def forward(self, input):
         p6 = self.c5_to_p6(input[5])
@@ -121,15 +95,22 @@ class FlattenDetectionMap(nn.Module):
 
 
 class RetinaNet(nn.Module):
-    def __init__(self, num_classes, num_anchors, anchor_levels, freeze_bn=False):
+    def __init__(self, model, num_classes, anchors_per_level, anchor_levels, freeze_bn=False):
         super().__init__()
 
         self.freeze_bn = freeze_bn
-        self.backbone = Backbone()
-        self.fpn = FPN(anchor_levels)
-        self.class_head = HeadSubnet(256, num_anchors * num_classes)
-        self.loc_head = HeadSubnet(256, num_anchors * 4)
-        self.flatten = FlattenDetectionMap(num_anchors)
+
+        if model.backbone == 'resnet50':
+            self.backbone = ResNet50()
+        elif model.backbone == 'effnetb0':
+            self.backbone = EfficientNetB0()
+        else:
+            raise AssertionError('invalid model.backbone'.format(model.backbone))
+
+        self.fpn = FPN(anchor_levels, self.backbone.featuremap_depths)
+        self.class_head = HeadSubnet(256, anchors_per_level * num_classes)
+        self.loc_head = HeadSubnet(256, anchors_per_level * 4)
+        self.flatten = FlattenDetectionMap(anchors_per_level)
 
         for m in self.backbone.modules():
             if isinstance(m, nn.BatchNorm2d):

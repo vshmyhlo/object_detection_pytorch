@@ -37,6 +37,7 @@ from detection.utils import draw_boxes, DataLoaderSlice, pr_curve_plot, fill_sco
 # TODO: eval on full-scale
 # TODO: min/max object size filter
 # TODO: boxfilter separate transform
+# TODO: do not store c1 map
 # TODO: compute metric with original boxes
 # TODO: pin memory
 # TODO: random resize
@@ -53,6 +54,7 @@ from detection.utils import draw_boxes, DataLoaderSlice, pr_curve_plot, fill_sco
 # TODO: show preds before nms
 # TODO: show pred heatmaps
 # TODO: learn anchor sizes/scales
+# TODO: filter response norm
 
 
 MEAN = [0.485, 0.456, 0.406]
@@ -85,29 +87,6 @@ ANCHORS = [
     if size is not None else None
     for size in config.anchors.sizes
 ]
-
-train_transform = T.Compose([
-    Resize(config.resize_size),
-    RandomCrop(config.crop_size),
-    RandomFlipLeftRight(),
-    ApplyTo('image', T.Compose([
-        T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
-        T.ToTensor(),
-        T.Normalize(mean=MEAN, std=STD),
-    ])),
-    FilterBoxes(),
-    BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
-])
-eval_transform = T.Compose([
-    Resize(config.resize_size),
-    RandomCrop(config.crop_size),
-    ApplyTo('image', T.Compose([
-        T.ToTensor(),
-        T.Normalize(mean=MEAN, std=STD),
-    ])),
-    FilterBoxes(),
-    BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
-])
 
 
 def worker_init_fn(_):
@@ -328,7 +307,33 @@ def collate_fn(batch):
     return images, labels, anchors, dets
 
 
-def train():
+def main():
+    seed_python(config.seed)
+    seed_torch(config.seed)
+
+    train_transform = T.Compose([
+        Resize(config.resize_size),
+        RandomCrop(config.crop_size),
+        RandomFlipLeftRight(),
+        ApplyTo('image', T.Compose([
+            T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
+            T.ToTensor(),
+            T.Normalize(mean=MEAN, std=STD),
+        ])),
+        FilterBoxes(),
+        BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
+    ])
+    eval_transform = T.Compose([
+        Resize(config.resize_size),
+        RandomCrop(config.crop_size),
+        ApplyTo('image', T.Compose([
+            T.ToTensor(),
+            T.Normalize(mean=MEAN, std=STD),
+        ])),
+        FilterBoxes(),
+        BuildLabels(ANCHORS, min_iou=config.anchors.min_iou, max_iou=config.anchors.max_iou),
+    ])
+
     train_dataset = Dataset(args.dataset_path, subset='train', transform=train_transform)
     eval_dataset = Dataset(args.dataset_path, subset='eval', transform=eval_transform)
     class_names = train_dataset.class_names
@@ -351,7 +356,11 @@ def train():
         collate_fn=collate_fn,
         worker_init_fn=worker_init_fn)
 
-    model = RetinaNet(Dataset.num_classes, len(ANCHOR_TYPES), anchor_levels=[a is not None for a in ANCHORS])
+    model = RetinaNet(
+        config.model,
+        num_classes=Dataset.num_classes,
+        anchors_per_level=len(ANCHOR_TYPES),
+        anchor_levels=[a is not None for a in ANCHORS])
     model = model.to(DEVICE)
 
     optimizer = build_optimizer(model.parameters(), config)
@@ -382,12 +391,6 @@ def train():
         gc.collect()
 
         saver.save(os.path.join(args.experiment_path, 'checkpoint.pth'), epoch=epoch + 1)
-
-
-def main():
-    seed_python(config.seed)
-    seed_torch(config.seed)
-    train()
 
 
 if __name__ == '__main__':
