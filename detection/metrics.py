@@ -26,6 +26,7 @@ class FPS(Mean):
         self.t = None
 
 
+# TODO: refactor to do intermediate computation
 class PerClassPR(Metric):
     def __init__(self):
         self.true = []
