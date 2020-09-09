@@ -205,7 +205,7 @@ def train_epoch(model, optimizer, scheduler, data_loader, class_names, epoch):
         metrics['loss'].update(loss.data.cpu().numpy())
         metrics['learning_rate'].update(np.squeeze(scheduler.get_lr()))
 
-        output = decode(output, anchors)
+        output = decode(output, anchors)  # FIXME:
 
         (loss.mean() / config.opt.acc_steps).backward()
 

@@ -25,6 +25,7 @@ class ConvNorm(nn.Sequential):
             Norm(out_channels))
 
 
+# TODO: revisit this block, this is incorrect
 class UpsampleMerge(nn.Module):
     def __init__(self, c_channels):
         super().__init__()

@@ -17,17 +17,6 @@ class Resize(object):
         return resize(input, size=self.size, interpolation=self.interpolation)
 
 
-class RandomResize(object):
-    def __init__(self, min_max_size, interpolation=Image.BILINEAR):
-        self.min_max_size = min_max_size
-        self.interpolation = interpolation
-
-    def __call__(self, input):
-        size = np.random.randint(self.min_max_size[0], self.min_max_size[1] + 1)
-
-        return resize(input, size=size, interpolation=self.interpolation)
-
-
 class RandomCrop(object):
     def __init__(self, size):
         self.size = size
