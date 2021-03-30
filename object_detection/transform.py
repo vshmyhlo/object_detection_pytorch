@@ -2,10 +2,10 @@ import numpy as np
 import torch
 from PIL import Image
 
-from detection.anchor_utils import arrange_anchors_on_grid
-from detection.box_coding import encode_boxes
-from detection.box_utils import boxes_area, boxes_clip
-from detection.utils import Detections
+from object_detection.anchor_utils import arrange_anchors_on_grid
+from object_detection.box_coding import encode_boxes
+from object_detection.box_utils import boxes_area, boxes_clip
+from object_detection.utils import Detections
 
 
 class Resize(object):

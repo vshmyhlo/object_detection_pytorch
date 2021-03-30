@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from detection.anchor_utils import flatten_detection_map
-from detection.model.backbone import EfficientNetB0, ResNet50
+from object_detection.anchor_utils import flatten_detection_map
+from object_detection.model.backbone import EfficientNetB0, ResNet50
 
 
 class ReLU(nn.ReLU):

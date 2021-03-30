@@ -1,7 +1,7 @@
 from torch.nn import functional as F
 
-from detection.box_utils import boxes_area, boxes_intersection
-from detection.utils import foreground_binary_coding
+from object_detection.box_utils import boxes_area, boxes_intersection
+from object_detection.utils import foreground_binary_coding
 
 
 def smooth_l1_loss(input, target):

@@ -6,7 +6,7 @@ import torch
 from all_the_tools.torch.utils import one_hot
 from PIL import Image, ImageDraw, ImageFont
 
-from detection.box_utils import boxes_clip
+from object_detection.box_utils import boxes_clip
 
 
 class Detections(namedtuple("Detections", ["class_ids", "boxes", "scores"])):

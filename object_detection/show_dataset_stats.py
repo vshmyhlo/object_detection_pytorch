@@ -4,11 +4,11 @@ import torch
 import torchvision.transforms as T
 from tqdm import tqdm
 
-from detection.box_utils import boxes_area, boxes_aspect_ratio
-from detection.config import build_default_config
-from detection.datasets.coco import Dataset as CocoDataset
-from detection.datasets.wider import Dataset as WiderDataset
-from detection.transform import Resize
+from object_detection.box_utils import boxes_area, boxes_aspect_ratio
+from object_detection.config import build_default_config
+from object_detection.datasets.coco import Dataset as CocoDataset
+from object_detection.datasets.wider import Dataset as WiderDataset
+from object_detection.transform import Resize
 
 
 @click.command()

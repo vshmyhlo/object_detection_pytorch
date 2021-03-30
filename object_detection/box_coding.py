@@ -1,7 +1,7 @@
 import torch
 
-from detection.box_utils import boxes_center, boxes_pairwise_iou, boxes_size, per_class_nms
-from detection.utils import Detections
+from object_detection.box_utils import boxes_center, boxes_pairwise_iou, boxes_size, per_class_nms
+from object_detection.utils import Detections
 
 
 def boxes_to_shifts_scales(boxes, anchors):

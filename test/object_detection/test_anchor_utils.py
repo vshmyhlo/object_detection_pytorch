@@ -1,6 +1,6 @@
 import torch
 
-from detection.anchor_utils import (
+from object_detection.anchor_utils import (
     arrange_anchor_on_grid,
     arrange_anchors_on_grid,
     flatten_detection_map,

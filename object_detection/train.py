@@ -18,17 +18,21 @@ from all_the_tools.utils import seed_python
 from tensorboardX import SummaryWriter
 from tqdm import tqdm
 
-from detection.anchor_utils import compute_anchor
-from detection.box_coding import boxes_to_shifts_scales, decode_boxes, shifts_scales_to_boxes
-from detection.box_utils import boxes_iou
-from detection.config import build_default_config
-from detection.datasets.coco import Dataset as CocoDataset
-from detection.datasets.wider import Dataset as WiderDataset
-from detection.losses import boxes_iou_loss, focal_loss, smooth_l1_loss
-from detection.map import per_class_precision_recall_to_map
-from detection.metrics import FPS, PerClassPR
-from detection.model import RetinaNet
-from detection.transform import (
+from object_detection.anchor_utils import compute_anchor
+from object_detection.box_coding import (
+    boxes_to_shifts_scales,
+    decode_boxes,
+    shifts_scales_to_boxes,
+)
+from object_detection.box_utils import boxes_iou
+from object_detection.config import build_default_config
+from object_detection.datasets.coco import Dataset as CocoDataset
+from object_detection.datasets.wider import Dataset as WiderDataset
+from object_detection.losses import boxes_iou_loss, focal_loss, smooth_l1_loss
+from object_detection.map import per_class_precision_recall_to_map
+from object_detection.metrics import FPS, PerClassPR
+from object_detection.model import RetinaNet
+from object_detection.transform import (
     BuildLabels,
     FilterBoxes,
     RandomCrop,
@@ -36,7 +40,7 @@ from detection.transform import (
     Resize,
     denormalize,
 )
-from detection.utils import DataLoaderSlice, draw_boxes, fill_scores, pr_curve_plot
+from object_detection.utils import DataLoaderSlice, draw_boxes, fill_scores, pr_curve_plot
 
 # TODO: clip boxes in decoding?
 # TODO: maybe use 1-based class indexing (maybe better not)
@@ -70,7 +74,7 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--config-path", type=str, required=True)
-parser.add_argument("--experiment-path", type=str, default="./tf_log/detection")
+parser.add_argument("--experiment-path", type=str, default="./tf_log/object_detection")
 parser.add_argument("--dataset-path", type=str, required=True)
 parser.add_argument("--restore-path", type=str)
 parser.add_argument("--workers", type=int, default=os.cpu_count())

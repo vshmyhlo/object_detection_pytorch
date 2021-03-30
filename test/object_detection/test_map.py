@@ -1,6 +1,6 @@
 import torch
 
-from detection.map import match_to_precision_recall, pr_auc
+from object_detection.map import match_to_precision_recall, pr_auc
 
 
 def test_pr_auc():

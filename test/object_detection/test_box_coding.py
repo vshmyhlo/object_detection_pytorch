@@ -1,12 +1,12 @@
 import torch
 
-from detection.box_coding import (
+from object_detection.box_coding import (
     boxes_to_shifts_scales,
     decode_boxes,
     encode_boxes,
     shifts_scales_to_boxes,
 )
-from detection.utils import Detections, foreground_binary_coding
+from object_detection.utils import Detections, foreground_binary_coding
 
 
 def test_conversion():

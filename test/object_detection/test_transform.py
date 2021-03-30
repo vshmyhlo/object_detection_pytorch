@@ -3,7 +3,7 @@ import pytest
 import torch
 from PIL import Image
 
-from detection.transform import crop, flip_left_right, resize
+from object_detection.transform import crop, flip_left_right, resize
 
 
 @pytest.fixture()

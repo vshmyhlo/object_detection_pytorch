@@ -1,6 +1,6 @@
 import torch
 
-from detection.box_utils import (
+from object_detection.box_utils import (
     boxes_area,
     boxes_center,
     boxes_clip,
