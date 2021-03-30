@@ -21,8 +21,11 @@ class Norm(nn.GroupNorm):
 class ConvNorm(nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1):
         super().__init__(
-            nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=kernel_size // 2),
-            Norm(out_channels))
+            nn.Conv2d(
+                in_channels, out_channels, kernel_size, stride=stride, padding=kernel_size // 2
+            ),
+            Norm(out_channels),
+        )
 
 
 # TODO: revisit this block, this is incorrect
@@ -36,7 +39,7 @@ class UpsampleMerge(nn.Module):
     def forward(self, p, c):
         # TODO: assert sizes
 
-        p = F.interpolate(p, size=(c.size(2), c.size(3)), mode='nearest')
+        p = F.interpolate(p, size=(c.size(2), c.size(3)), mode="nearest")
         c = self.projection(c)
         input = p + c
         input = self.output(input)
@@ -50,9 +53,11 @@ class FPN(nn.Module):
         super().__init__()
 
         self.c5_to_p6 = ConvNorm(featuremap_depths[5], 256, 3, stride=2)
-        self.p6_to_p7 = nn.Sequential(
-            ReLU(inplace=True),
-            ConvNorm(256, 256, 3, stride=2)) if anchor_levels[7] else None
+        self.p6_to_p7 = (
+            nn.Sequential(ReLU(inplace=True), ConvNorm(256, 256, 3, stride=2))
+            if anchor_levels[7]
+            else None
+        )
         self.c5_to_p5 = ConvNorm(featuremap_depths[5], 256, 1)
         self.p5c4_to_p4 = UpsampleMerge(featuremap_depths[4])
         self.p4c3_to_p3 = UpsampleMerge(featuremap_depths[3])
@@ -82,7 +87,8 @@ class HeadSubnet(nn.Sequential):
             ReLU(inplace=True),
             ConvNorm(in_channels, in_channels, 3),
             ReLU(inplace=True),
-            nn.Conv2d(in_channels, out_channels, 3, padding=1))
+            nn.Conv2d(in_channels, out_channels, 3, padding=1),
+        )
 
 
 class FlattenDetectionMap(nn.Module):
@@ -101,12 +107,12 @@ class RetinaNet(nn.Module):
 
         self.freeze_bn = freeze_bn
 
-        if model.backbone == 'resnet50':
+        if model.backbone == "resnet50":
             self.backbone = ResNet50()
-        elif model.backbone == 'effnetb0':
+        elif model.backbone == "effnetb0":
             self.backbone = EfficientNetB0()
         else:
-            raise AssertionError('invalid model.backbone'.format(model.backbone))
+            raise AssertionError("invalid model.backbone".format(model.backbone))
 
         self.fpn = FPN(anchor_levels, self.backbone.featuremap_depths)
         self.class_head = HeadSubnet(256, anchors_per_level * num_classes)
@@ -119,12 +125,11 @@ class RetinaNet(nn.Module):
                     p.requires_grad = False
 
         modules = itertools.chain(
-            self.fpn.modules(),
-            self.class_head.modules(),
-            self.loc_head.modules())
+            self.fpn.modules(), self.class_head.modules(), self.loc_head.modules()
+        )
         for m in modules:
             if isinstance(m, nn.Conv2d):
-                nn.init.normal_(m.weight, mean=0., std=0.01)
+                nn.init.normal_(m.weight, mean=0.0, std=0.01)
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
@@ -137,8 +142,12 @@ class RetinaNet(nn.Module):
         backbone_output = self.backbone(input)
         fpn_output = self.fpn(backbone_output)
 
-        class_output = torch.cat([self.flatten(self.class_head(x)) for x in fpn_output if x is not None], 1)
-        loc_output = torch.cat([self.flatten(self.loc_head(x)) for x in fpn_output if x is not None], 1)
+        class_output = torch.cat(
+            [self.flatten(self.class_head(x)) for x in fpn_output if x is not None], 1
+        )
+        loc_output = torch.cat(
+            [self.flatten(self.loc_head(x)) for x in fpn_output if x is not None], 1
+        )
 
         return class_output, loc_output
 

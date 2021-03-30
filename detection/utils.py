@@ -3,13 +3,13 @@ from collections import namedtuple
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from PIL import ImageFont, Image, ImageDraw
 from all_the_tools.torch.utils import one_hot
+from PIL import Image, ImageDraw, ImageFont
 
 from detection.box_utils import boxes_clip
 
 
-class Detections(namedtuple('Detections', ['class_ids', 'boxes', 'scores'])):
+class Detections(namedtuple("Detections", ["class_ids", "boxes", "scores"])):
     def to(self, device):
         return self.apply(lambda x: x.to(device))
 
@@ -21,9 +21,8 @@ class Detections(namedtuple('Detections', ['class_ids', 'boxes', 'scores'])):
                 return f(x)
 
         return Detections(
-            class_ids=apply(self.class_ids),
-            boxes=apply(self.boxes),
-            scores=apply(self.scores))
+            class_ids=apply(self.class_ids), boxes=apply(self.boxes), scores=apply(self.scores)
+        )
 
 
 class DataLoaderSlice(object):
@@ -58,17 +57,19 @@ def fill_scores(detections):
     return Detections(
         class_ids=detections.class_ids,
         boxes=detections.boxes,
-        scores=torch.ones_like(detections.class_ids, dtype=torch.float))
+        scores=torch.ones_like(detections.class_ids, dtype=torch.float),
+    )
 
 
 # TODO: fix boxes usage
 def draw_boxes(image, detections, class_names, line_width=2, shade=True):
-    font = ImageFont.truetype('./data/Droid+Sans+Mono+Awesome.ttf', size=14)
+    font = ImageFont.truetype("./data/Droid+Sans+Mono+Awesome.ttf", size=14)
 
     detections = Detections(
         class_ids=detections.class_ids,
         boxes=boxes_clip(detections.boxes, image.size()[1:3]).round().long(),
-        scores=detections.scores)
+        scores=detections.scores,
+    )
 
     device = image.device
     image = image.permute(1, 2, 0).data.cpu().numpy()
@@ -84,13 +85,19 @@ def draw_boxes(image, detections, class_names, line_width=2, shade=True):
     draw = ImageDraw.Draw(image)
 
     for c, (t, l, b, r), s in zip(
-            detections.class_ids.data.cpu().numpy(),
-            detections.boxes.data.cpu().numpy(),
-            detections.scores.data.cpu().numpy()):
+        detections.class_ids.data.cpu().numpy(),
+        detections.boxes.data.cpu().numpy(),
+        detections.scores.data.cpu().numpy(),
+    ):
         if len(class_names) > 1:
-            colors = np.random.RandomState(42).uniform(85, 255, size=(len(class_names), 3)).round().astype(np.uint8)
+            colors = (
+                np.random.RandomState(42)
+                .uniform(85, 255, size=(len(class_names), 3))
+                .round()
+                .astype(np.uint8)
+            )
             color = tuple(colors[c])
-            text = '{}: {:.2f}'.format(class_names[c], s)
+            text = "{}: {:.2f}".format(class_names[c], s)
             size = draw.textsize(text, font=font)
             draw.rectangle(((l, t - size[1]), (l + size[0] + line_width * 2, t)), fill=color)
             draw.text((l + line_width, t - size[1]), text, font=font, fill=(0, 0, 0))
@@ -113,8 +120,8 @@ def foreground_binary_coding(input, num_classes):
 def pr_curve_plot(pr):
     fig = plt.figure()
     plt.plot(pr[:, 1], pr[:, 0])
-    plt.xlabel('recall')
-    plt.ylabel('precision')
+    plt.xlabel("recall")
+    plt.ylabel("precision")
     plt.fill_between(pr[:, 1], 0, pr[:, 0], alpha=0.1)
     plt.xlim(0, 1)
     plt.ylim(0, 1)

@@ -40,7 +40,7 @@ class EfficientNetB0(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.model = efficientnet_pytorch.EfficientNet.from_pretrained('efficientnet-b0')
+        self.model = efficientnet_pytorch.EfficientNet.from_pretrained("efficientnet-b0")
 
     def forward(self, input):
         """ Returns output of the final convolution layer """

@@ -49,7 +49,7 @@ def arrange_anchor_on_grid(image_size, map_size, anchor):
 
 
 def compute_anchor(size, ratio, scale):
-    h = math.sqrt(size**2 / ratio) * scale
+    h = math.sqrt(size ** 2 / ratio) * scale
     w = h * ratio
 
     return torch.tensor((h, w))
